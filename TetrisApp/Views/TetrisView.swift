@@ -10,33 +10,37 @@ import ComposableArchitecture
 
 struct TetrisView: View {
     let store: StoreOf<GameReducer>
-    
+
     // MARK: - Drawing Constants
     private let blockSize: CGFloat = 20
-    
+
     var body: some View {
         VStack {
             // Score and controls
             scoreView
-            
+
             // Game board
             ZStack {
                 // Grid background
                 BoardView(rows: store.board.count, columns: store.board[0].count)
-                
+
                 // Placed blocks
                 ForEach(0..<store.board.count, id: \.self) { row in
                     ForEach(0..<store.board[0].count, id: \.self) { column in
                         if let color = store.board[row][column] {
-                            BlockView(color: color)
-                                .offset(
-                                    x: (CGFloat(column) - 4.5 ) * blockSize,
-                                    y: (CGFloat(row) - 9.5) * blockSize
-                                )
+                            BlockView(
+                                color: color,
+                                isClearing: store.clearingLines.contains(row),
+                                animationProgress: store.animationProgress
+                            )
+                            .offset(
+                                x: (CGFloat(column) - 4.5 ) * blockSize,
+                                y: (CGFloat(row) - 9.5) * blockSize
+                            )
                         }
                     }
                 }
-                
+
                 // Current piece
                 if let piece = store.currentPiece {
                     ForEach(0..<piece.blocks.count, id: \.self) { index in
@@ -54,10 +58,10 @@ struct TetrisView: View {
                 height: CGFloat(store.board.count) * blockSize
             )
             .background(Color.black)
-            
+
             // Next piece preview
             NextPieceView(nextPiece: store.nextPiece, blockSize: blockSize)
-            
+
             // Controls
             controlsView
         }
@@ -75,7 +79,7 @@ struct TetrisView: View {
                             store.send(.moveLeft)
                         }
                     }
-                    
+
                     let vertical = gesture.translation.height
                     if vertical > 20 {
                         store.send(.moveDown)
@@ -85,14 +89,30 @@ struct TetrisView: View {
                 }
         )
     }
-    
+
     private var scoreView: some View {
         HStack {
-            Text("Score: \(store.score)")
-                .font(.title)
-            
+            VStack(alignment: .leading) {
+                Text("Score: \(store.score)")
+                    .font(.headline)
+                Text("Level: \(store.level)")
+                    .font(.headline)
+                Text("Lines: \(store.linesCleared)/\(store.linesToNextLevel)")
+                    .font(.subheadline)
+            }
+
             Spacer()
             
+            if store.isLevelTransitioning {
+                Text("LEVEL \(store.level)!")
+                    .font(.title)
+                    .foregroundColor(.yellow)
+                    .transition(.scale)
+                    .animation(.spring(), value: store.level)
+            }
+
+            Spacer()
+
             if store.isGameOver {
                 Button("New Game") {
                     store.send(.startGame)
@@ -109,26 +129,26 @@ struct TetrisView: View {
         }
         .padding()
     }
-    
+
     private var controlsView: some View {
         HStack {
             Button(action: { store.send(.moveLeft) }) {
                 Image(systemName: "arrow.left")
                     .frame(width: 60, height: 60)
             }
-            
+
             VStack {
                 Button(action: { store.send(.rotate) }) {
                     Image(systemName: "arrow.clockwise")
                         .frame(width: 60, height: 60)
                 }
-                
+
                 Button(action: { store.send(.drop) }) {
                     Image(systemName: "arrow.down")
                         .frame(width: 60, height: 60)
                 }
             }
-            
+
             Button(action: { store.send(.moveRight) }) {
                 Image(systemName: "arrow.right")
                     .frame(width: 60, height: 60)

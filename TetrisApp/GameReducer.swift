@@ -19,6 +19,12 @@ struct GameReducer {
         var score: Int
         var isGameOver: Bool
         var isPaused: Bool
+        var clearingLines: [Int] = []
+        var animationProgress: Double = 0
+        var level: Int = 1
+        var linesCleared: Int = 0
+        var linesToNextLevel: Int = 10
+        var isLevelTransitioning: Bool = false
         
         static let emptyBoard: [[BlockColor?]] = Array(
             repeating: Array(repeating: nil, count: 10),
@@ -30,10 +36,23 @@ struct GameReducer {
             self.currentPiece = nil
             self.nextPiece = nil
             self.piecePosition = Position(row: 0, column: 4)
-            self.gameSpeed = 0.5
+            self.gameSpeed = Self.speedForLevel(1) // level 1 speed
             self.score = 0
             self.isGameOver = false
             self.isPaused = false
+            self.level = 1
+            self.clearingLines = []
+            self.animationProgress = 0
+            self.linesCleared = 0
+            self.linesToNextLevel = 10
+        }
+        
+        // Helper to calculate speed for each level
+        static func speedForLevel(_ level: Int) -> Double {
+            // Classic Tetris speed progression (faster as level increases)
+            let baseSpeed = 1.0
+            let speedReduction = min(Double(level - 1) * 0.05, 0.8)
+            return baseSpeed - speedReduction
         }
     }
     
@@ -50,6 +69,13 @@ struct GameReducer {
         case tick
         case checkLines
         case spawnNewPiece
+        
+        case startClearingLines([Int])
+        case animateLineClearing
+        case finishClearingLines
+        
+        case checkLevelProgression
+        case levelUpComplete
     }
     
     @Dependency(\.mainQueue) var mainQueue
@@ -127,26 +153,61 @@ struct GameReducer {
                 return .send(.moveDown)
                 
             case .checkLines:
+                var linesToClear = [Int]()
+                for row in (0..<state.board.count).reversed() {
+                    if state.board[row].allSatisfy({ $0 != nil }) {
+                        linesToClear.append(row)
+                    }
+                }
+                if !linesToClear.isEmpty {
+                    state.clearingLines = linesToClear
+                    state.animationProgress = 0
+                    return .merge(
+                        .send(.startClearingLines(linesToClear)),
+                        .run { send in
+                            for await _ in self.mainQueue.timer(interval: .seconds(0.016)) {
+                                await send(.animateLineClearing)
+                            }
+                        }
+                            .cancellable(id: TimerID.lineClearAnimation)
+                    )
+                }
+                return .none
+                
+            case .startClearingLines:
+                return .none
+                
+            case .animateLineClearing:
+                state.animationProgress += 0.05
+                if state.animationProgress >= 1 {
+                    return .send(.finishClearingLines)
+                }
+                return .none
+                
+            case .finishClearingLines:
                 var newBoard = state.board
                 var linesCleared = 0
-                
-                for row in (0..<newBoard.count).reversed() {
-                    if newBoard[row].allSatisfy({ $0 != nil }) {
-                        newBoard.remove(at: row)
-                        linesCleared += 1
-                    }
+                for row in state.clearingLines.sorted(by: >) {
+                    newBoard.remove(at: row)
+                    linesCleared += 1
                 }
                 
                 for _ in 0..<linesCleared {
                     newBoard.insert(Array(repeating: nil, count: state.board[0].count), at: 0)
                 }
-                
                 state.board = newBoard
-                state.score += linesCleared * 100
+                state.linesCleared += linesCleared
+                state.score += linesCleared * 100 * state.level // Score multiplier based on level
+                
+                state.clearingLines = []
+                state.animationProgress = 0
                 if linesCleared == 4 {
                     state.score += 400 // Bonus for Tetris
                 }
-                return .none
+                return .run { send in
+                    await send(.checkLevelProgression)
+                }
+                .cancellable(id: TimerID.lineClearAnimation)
                 
             case .spawnNewPiece:
                 if let piece = state.currentPiece {
@@ -158,26 +219,52 @@ struct GameReducer {
                         }
                     }
                 }
-                
                 if state.piecePosition.row <= 0 {
                     return .send(.endGame)
                 }
-                
                 state.currentPiece = state.nextPiece
                 state.nextPiece = Tetromino.create(randomPiece())
                 state.piecePosition = Position(row: 0, column: 4)
-                
                 if !canPlacePiece(state, piece: state.currentPiece!) {
                     return .send(.endGame)
                 }
-                
                 return .send(.checkLines)
+                
+            case .checkLevelProgression:
+                if state.linesCleared >= state.linesToNextLevel {
+                    state.isLevelTransitioning = true
+                    state.level += 1
+                    state.linesToNextLevel += 10 // Standard Tetris: level up every 10 lines
+                    state.gameSpeed = State.speedForLevel(state.level)
+                    
+                    
+                    return .merge(.cancel(id: TimerID.gameTimer),
+                                  .run { send in
+                                      try await Task.sleep(for: .seconds(1))
+                                      await send(.levelUpComplete)
+                                  }
+                        .cancellable(id: TimerID.gameTimer)
+                    )
+                }
+                return .none
+            case .levelUpComplete:
+                state.isLevelTransitioning = false
+                if !state.isPaused && !state.isGameOver {
+                    return .run { [state] send in
+                        for await _ in self.mainQueue.timer(interval: .seconds(state.gameSpeed)) {
+                            await send(.tick)
+                        }
+                    }
+                    .cancellable(id: TimerID.gameTimer)
+                }
+                return .none
             }
         }
     }
     
     private enum TimerID {
         case gameTimer
+        case lineClearAnimation
     }
     
     private func randomPiece() -> BlockColor {
