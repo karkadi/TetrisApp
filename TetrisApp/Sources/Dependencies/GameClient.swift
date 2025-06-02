@@ -15,6 +15,7 @@ protocol GameClient {
     func canMovePiece(_ state: GameReducer.State, _ offset: (row: Int, column: Int)) -> Bool
     func spawnPiece( _ state: inout GameReducer.State) -> Bool
     func clearLines( _ state: inout GameReducer.State) -> [Int]
+    func removeLines(_ linesToClear: [Int], _ state: inout GameReducer.State)
     func checkLevelProgression( _ state: inout GameReducer.State) -> Bool
 }
 
@@ -22,7 +23,7 @@ final class DefaultGameClient: GameClient {
     func randomPiece() -> BlockColor {
         BlockColor.allCases.randomElement() ?? .i
     }
-    
+
     func canPlacePiece(_ state: GameReducer.State, _ piece: Tetromino) -> Bool {
         for block in piece.blocks {
             let row = state.piecePosition.row + block.row
@@ -36,7 +37,7 @@ final class DefaultGameClient: GameClient {
         }
         return true
     }
-    
+
     func canMovePiece(_ state: GameReducer.State, _ offset: (row: Int, column: Int)) -> Bool {
         guard let piece = state.currentPiece else { return false }
         let newPosition = Position(
@@ -55,7 +56,7 @@ final class DefaultGameClient: GameClient {
         }
         return true
     }
-    
+
     func spawnPiece(_ state: inout GameReducer.State) -> Bool {
         if let piece = state.currentPiece {
             for block in piece.blocks {
@@ -74,7 +75,7 @@ final class DefaultGameClient: GameClient {
         state.piecePosition = Position(row: 0, column: 4)
         return canPlacePiece(state, state.currentPiece!)
     }
-    
+
     func clearLines(_ state: inout GameReducer.State) -> [Int] {
         var linesToClear = [Int]()
         for row in (0..<state.board.count).reversed() {
@@ -82,6 +83,10 @@ final class DefaultGameClient: GameClient {
                 linesToClear.append(row)
             }
         }
+        return linesToClear
+    }
+
+    func removeLines(_ linesToClear: [Int], _ state: inout GameReducer.State) {
         if !linesToClear.isEmpty {
             var newBoard = state.board
             var linesCleared = 0
@@ -99,9 +104,8 @@ final class DefaultGameClient: GameClient {
                 state.score += 400 // Bonus for Tetris
             }
         }
-        return linesToClear
     }
-    
+
     func checkLevelProgression(_ state: inout GameReducer.State) -> Bool {
         if state.linesCleared >= state.linesToNextLevel {
             state.level += 1

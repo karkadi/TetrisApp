@@ -78,6 +78,7 @@ struct GameReducer {
 
     @Dependency(\.mainQueue) var mainQueue
     @Dependency(\.gameClient) var gameClient
+    @Dependency(\.audioClient) var audioClient
 
     var body: some Reducer<State, Action> {
         Reduce { state, action in
@@ -145,7 +146,11 @@ struct GameReducer {
                 while gameClient.canMovePiece(state, (1, 0)) {
                     state.piecePosition.row += 1
                 }
-                return .send(.spawnNewPiece)
+
+                return  .run { send in
+                    await send(.spawnNewPiece)
+                     _ = try await audioClient.play("drop")
+                }
 
             case .tick:
                 guard !state.isGameOver, !state.isPaused else { return .none }
@@ -156,10 +161,11 @@ struct GameReducer {
                 if !linesToClear.isEmpty {
                     state.clearingLines = linesToClear
                     state.animationProgress = 0
+
                     return .merge(
                         .send(.startClearingLines(linesToClear)),
                         .run { send in
-                            for await _ in self.mainQueue.timer(interval: .seconds(0.5)) {
+                            for await _ in self.mainQueue.timer(interval: .seconds(0.02)) {
                                 await send(.animateLineClearing)
                             }
                         }
@@ -169,7 +175,9 @@ struct GameReducer {
                 return .send(.checkLevelProgression)
 
             case .startClearingLines:
-                return .none
+                return .run { _ in
+                   _ = try await audioClient.play("line_clear")
+                }
 
             case .animateLineClearing:
                 state.animationProgress += 0.05
@@ -179,6 +187,8 @@ struct GameReducer {
                 return .none
 
             case .finishClearingLines:
+                gameClient.removeLines(state.clearingLines, &state)
+
                 state.clearingLines = []
                 state.animationProgress = 0
                 return .merge(
@@ -195,9 +205,11 @@ struct GameReducer {
             case .checkLevelProgression:
                 if gameClient.checkLevelProgression(&state) {
                     state.isLevelTransitioning = true
+
                     return .merge(
                         .cancel(id: TimerID.gameTimer),
                         .run { send in
+                           _ = try await audioClient.play("level_up")
                             try await Task.sleep(for: .seconds(1))
                             await send(.levelUpComplete)
                         }
