@@ -15,6 +15,7 @@ struct TetrisApp: App {
                 GameReducer()
             }
             )
+            .preferredColorScheme(.light)
         }
     }
 }

@@ -6,7 +6,6 @@
 //
 import ComposableArchitecture
 import Foundation
-//import SwiftUI
 
 @Reducer
 struct GameReducer {
@@ -26,6 +25,7 @@ struct GameReducer {
         var linesCleared: Int
         var linesToNextLevel: Int
         var isLevelTransitioning: Bool
+        var isMuted: Bool
 
         static let emptyBoard: [[BlockColor?]] = Array(
             repeating: Array(repeating: nil, count: 10),
@@ -47,6 +47,7 @@ struct GameReducer {
             self.linesCleared = 0
             self.linesToNextLevel = 10
             self.isLevelTransitioning = false
+            self.isMuted = false
         }
 
         static func speedForLevel(_ level: Int) -> Double {
@@ -74,6 +75,7 @@ struct GameReducer {
         case finishClearingLines
         case checkLevelProgression
         case levelUpComplete
+        case toggleMute
     }
 
     @Dependency(\.mainQueue) var mainQueue
@@ -228,6 +230,10 @@ struct GameReducer {
                     }
                     .cancellable(id: TimerID.gameTimer)
                 }
+                return .none
+
+            case .toggleMute:
+                state.isMuted = audioClient.toggleMute()
                 return .none
             }
         }
