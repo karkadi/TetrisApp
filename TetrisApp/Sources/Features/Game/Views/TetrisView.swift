@@ -116,12 +116,17 @@ struct TetrisView: View {
             
             Spacer()
             
-            if store.isLevelTransitioning {
-                Text("LEVEL \(store.level)!")
-                    .font(.title)
-                    .foregroundColor(.yellow)
-                    .transition(.scale)
-                    .animation(.spring(), value: store.level)
+            VStack {
+                Text("High Score: \(store.highScore)")
+                    .font(.headline)
+                    .foregroundColor(store.score > store.highScore && store.score > 0 ? .yellow : .primary)
+                if store.isLevelTransitioning {
+                    Text("LEVEL \(store.level)!")
+                        .font(.title)
+                        .foregroundColor(.yellow)
+                        .transition(.scale)
+                        .animation(.spring(), value: store.level)
+                }
             }
             
             Spacer()

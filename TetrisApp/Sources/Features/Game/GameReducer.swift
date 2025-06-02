@@ -17,6 +17,7 @@ struct GameReducer {
         var piecePosition: Position
         var gameSpeed: Double
         var score: Int
+        var highScore: Int
         var isGameOver: Bool
         var isPaused: Bool
         var clearingLines: [Int]
@@ -26,12 +27,12 @@ struct GameReducer {
         var linesToNextLevel: Int
         var isLevelTransitioning: Bool
         var isMuted: Bool
-
+        
         static let emptyBoard: [[BlockColor?]] = Array(
             repeating: Array(repeating: nil, count: 10),
             count: 20
         )
-
+        
         init() {
             self.board = State.emptyBoard
             self.currentPiece = nil
@@ -39,6 +40,7 @@ struct GameReducer {
             self.piecePosition = Position(row: 0, column: 4)
             self.gameSpeed = Self.speedForLevel(1)
             self.score = 0
+            self.highScore = 0
             self.isGameOver = false
             self.isPaused = false
             self.clearingLines = []
@@ -49,14 +51,14 @@ struct GameReducer {
             self.isLevelTransitioning = false
             self.isMuted = false
         }
-
+        
         static func speedForLevel(_ level: Int) -> Double {
             let baseSpeed = 1.0
             let speedReduction = min(Double(level - 1) * 0.05, 0.8)
             return baseSpeed - speedReduction
         }
     }
-
+    
     enum Action {
         case startGame
         case pauseGame
@@ -76,17 +78,20 @@ struct GameReducer {
         case checkLevelProgression
         case levelUpComplete
         case toggleMute
+        case checkHighScore
     }
-
+    
     @Dependency(\.mainQueue) var mainQueue
     @Dependency(\.gameClient) var gameClient
     @Dependency(\.audioClient) var audioClient
-
+    @Dependency(\.highScoreClient) var highScoreClient
+    
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
             case .startGame:
                 state = State()
+                state.highScore = self.highScoreClient.load()
                 state.currentPiece = Tetromino.create(gameClient.randomPiece())
                 state.nextPiece = Tetromino.create(gameClient.randomPiece())
                 return .run { [state] send in
@@ -95,11 +100,11 @@ struct GameReducer {
                     }
                 }
                 .cancellable(id: TimerID.gameTimer)
-
+                
             case .pauseGame:
                 state.isPaused = true
                 return .cancel(id: TimerID.gameTimer)
-
+                
             case .resumeGame:
                 state.isPaused = false
                 return .run { [state] send in
@@ -108,25 +113,25 @@ struct GameReducer {
                     }
                 }
                 .cancellable(id: TimerID.gameTimer)
-
+                
             case .endGame:
                 state.isGameOver = true
                 return .cancel(id: TimerID.gameTimer)
-
+                
             case .moveLeft:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 if gameClient.canMovePiece(state, (0, -1)) {
                     state.piecePosition.column -= 1
                 }
                 return .none
-
+                
             case .moveRight:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 if gameClient.canMovePiece(state, (0, 1)) {
                     state.piecePosition.column += 1
                 }
                 return .none
-
+                
             case .moveDown:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 if gameClient.canMovePiece(state, (1, 0)) {
@@ -135,35 +140,35 @@ struct GameReducer {
                 } else {
                     return .send(.spawnNewPiece)
                 }
-
+                
             case .rotate:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 if let rotated = state.currentPiece?.rotated(), gameClient.canPlacePiece(state, rotated) {
                     state.currentPiece = rotated
                 }
                 return .none
-
+                
             case .drop:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 while gameClient.canMovePiece(state, (1, 0)) {
                     state.piecePosition.row += 1
                 }
-
+                
                 return  .run { send in
                     await send(.spawnNewPiece)
-                     _ = try await audioClient.play("drop")
+                    _ = try await audioClient.play("drop")
                 }
-
+                
             case .tick:
                 guard !state.isGameOver, !state.isPaused else { return .none }
                 return .send(.moveDown)
-
+                
             case .checkLines:
                 let linesToClear = gameClient.clearLines(&state)
                 if !linesToClear.isEmpty {
                     state.clearingLines = linesToClear
                     state.animationProgress = 0
-
+                    
                     return .merge(
                         .send(.startClearingLines(linesToClear)),
                         .run { send in
@@ -171,55 +176,55 @@ struct GameReducer {
                                 await send(.animateLineClearing)
                             }
                         }
-                        .cancellable(id: TimerID.lineClearAnimation)
+                            .cancellable(id: TimerID.lineClearAnimation)
                     )
                 }
                 return .send(.checkLevelProgression)
-
+                
             case .startClearingLines:
                 return .run { _ in
-                   _ = try await audioClient.play("line_clear")
+                    _ = try await audioClient.play("line_clear")
                 }
-
+                
             case .animateLineClearing:
                 state.animationProgress += 0.05
                 if state.animationProgress >= 1 {
                     return .send(.finishClearingLines)
                 }
                 return .none
-
+                
             case .finishClearingLines:
                 gameClient.removeLines(state.clearingLines, &state)
-
+                
                 state.clearingLines = []
                 state.animationProgress = 0
                 return .merge(
                     .cancel(id: TimerID.lineClearAnimation),
-                    .send(.checkLevelProgression)
+                    .send(.checkLevelProgression),
+                    .send(.checkHighScore)
                 )
-
+                
             case .spawnNewPiece:
                 if !gameClient.spawnPiece(&state) {
                     return .send(.endGame)
                 }
                 return .send(.checkLines)
-
+                
             case .checkLevelProgression:
                 if gameClient.checkLevelProgression(&state) {
                     state.isLevelTransitioning = true
-
                     return .merge(
                         .cancel(id: TimerID.gameTimer),
                         .run { send in
-                           _ = try await audioClient.play("level_up")
+                            _ = try await audioClient.play("level_up")
                             try await Task.sleep(for: .seconds(1))
                             await send(.levelUpComplete)
                         }
-                        .cancellable(id: TimerID.gameTimer)
+                            .cancellable(id: TimerID.gameTimer)
                     )
                 }
                 return .none
-
+                
             case .levelUpComplete:
                 state.isLevelTransitioning = false
                 if !state.isPaused && !state.isGameOver {
@@ -231,14 +236,21 @@ struct GameReducer {
                     .cancellable(id: TimerID.gameTimer)
                 }
                 return .none
-
+                
             case .toggleMute:
                 state.isMuted = audioClient.toggleMute()
+                return .none
+                
+            case .checkHighScore:
+                if state.score > state.highScore {
+                    state.highScore = state.score
+                    highScoreClient.save(state.highScore)
+                }
                 return .none
             }
         }
     }
-
+    
     private enum TimerID {
         case gameTimer
         case lineClearAnimation
