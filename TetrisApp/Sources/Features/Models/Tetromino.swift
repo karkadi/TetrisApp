@@ -13,7 +13,7 @@ struct Position: Equatable {
 }
 
 enum BlockColor: Int, CaseIterable, Equatable {
-    case i, o, t, j, l, s, z
+    case i, o, t, j, l, s, z, gray
 }
 
 extension BlockColor {
@@ -26,6 +26,7 @@ extension BlockColor {
         case .l: return .orange
         case .s: return .green
         case .z: return .red
+        case .gray: return .gray
         }
     }
 }
@@ -85,6 +86,12 @@ struct Tetromino: Equatable {
                 blocks: [Position(row: 0, column: 0), Position(row: 0, column: 1),
                          Position(row: 1, column: 1), Position(row: 1, column: 2)],
                 pivot: Position(row: 1, column: 1)
+            )
+        case .gray:
+            return Tetromino(
+                type: .o,
+                blocks: [Position(row: 0, column: 0)],
+                pivot: Position(row: 0, column: 0)
             )
         }
     }

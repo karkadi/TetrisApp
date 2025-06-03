@@ -43,20 +43,24 @@ struct NextPieceView: View {
                             )
                     }
                 }
-                .frame(width: 4 * blockSize, height: 4 * blockSize)
-                .background(Color.black.opacity(0.3))
+                .frame(width: 4.5 * blockSize, height: 4 * blockSize)
+                .background(Color.black.opacity(0.8))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-        .padding()
+        .padding(.leading,16)
+        .padding(.trailing,8)
     }
 }
 
 #Preview {
     ScrollView {
         VStack {
-            ForEach(BlockColor.allCases, id: \.self) { color in
+            ForEach(BlockColor.allCases.dropLast(), id: \.self) { color in
                 NextPieceView(nextPiece: Tetromino.create(color), blockSize: 20)
             }
         }
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.3))
     }
 }

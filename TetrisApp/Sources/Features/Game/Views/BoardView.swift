@@ -9,25 +9,89 @@ import SwiftUI
 struct BoardView: View {
     let rows: Int
     let columns: Int
-    
+
     var body: some View {
         GeometryReader { geometry in
             let blockSize = geometry.size.width / CGFloat(columns)
-            
+
+            // Main game area background
+            Rectangle()
+                .fill(Color.black)
+                .frame(width: geometry.size.width + 2 * blockSize, height: geometry.size.height + 2 * blockSize)
+                .offset(x: -1, y: -1) // Offset for border
+
+            // Grid lines (optional)
             Path { path in
                 // Vertical lines
                 for column in 0...columns {
-                    path.move(to: CGPoint(x: CGFloat(column) * blockSize, y: 0))
-                    path.addLine(to: CGPoint(x: CGFloat(column) * blockSize, y: geometry.size.height))
+                    path.move(to: CGPoint(
+                        x: CGFloat(column) * blockSize - blockSize,
+                        y: 0
+                    ))
+                    path.addLine(to: CGPoint(
+                        x: CGFloat(column) * blockSize - blockSize,
+                        y: geometry.size.height
+                    ))
                 }
-                
+
                 // Horizontal lines
                 for row in 0...rows {
-                    path.move(to: CGPoint(x: 0, y: CGFloat(row) * blockSize))
-                    path.addLine(to: CGPoint(x: geometry.size.width, y: CGFloat(row) * blockSize))
+                    path.move(to: CGPoint(
+                        x: 0,
+                        y: CGFloat(row) * blockSize - blockSize
+                    ))
+                    path.addLine(to: CGPoint(
+                        x: geometry.size.width ,
+                        y: CGFloat(row) * blockSize - blockSize
+                    ))
                 }
             }
             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+            .offset(x: blockSize, y: blockSize)
+
+            // Left border (grey blocks)
+            ForEach(0..<rows, id: \.self) { row in
+                BlockView(color: .gray)
+                    .offset(
+                        x: 0,
+                        y: CGFloat(row) * blockSize + blockSize
+                    )
+            }
+
+            // Right border (grey blocks)
+            ForEach(0..<rows, id: \.self) { row in
+                BlockView(color: .gray)
+                    .offset(
+                        x: CGFloat(columns) * blockSize + blockSize,
+                        y: CGFloat(row) * blockSize + blockSize
+                    )
+            }
+
+            // Top border (grey blocks)
+            ForEach(0..<columns + 2, id: \.self) { column in
+                BlockView(color: .gray)
+                    .offset(
+                        x: CGFloat(column) * blockSize,
+                        y: 0
+                    )
+            }
+
+            // Bottom border (grey blocks)
+            ForEach(0..<columns + 2, id: \.self) { column in
+                BlockView(color: .gray)
+                    .offset(
+                        x: CGFloat(column) * blockSize,
+                        y: CGFloat(rows) * blockSize + blockSize
+                    )
+            }
         }
     }
+}
+
+#Preview {
+    VStack {
+        BoardView(rows: 20, columns: 10)
+            .padding()
+    }
+    .padding(40)
 }

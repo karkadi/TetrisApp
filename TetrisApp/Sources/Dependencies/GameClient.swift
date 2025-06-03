@@ -21,7 +21,7 @@ protocol GameClient {
 
 final class DefaultGameClient: GameClient {
     func randomPiece() -> BlockColor {
-        BlockColor.allCases.randomElement() ?? .i
+        BlockColor.allCases.dropLast().randomElement() ?? .i
     }
 
     func canPlacePiece(_ state: GameReducer.State, _ piece: Tetromino) -> Bool {
