@@ -8,6 +8,7 @@ import SwiftUI
 
 struct BlockView: View {
     let color: BlockColor
+    let blockSize: CGFloat
     var isClearing: Bool = false
     var animationProgress: Double = 0
 
@@ -21,7 +22,7 @@ struct BlockView: View {
 
             Rectangle()
                 .fill(color.color)
-                .frame(width: 20, height: 20)
+                .frame(width: blockSize, height: blockSize)
                 .overlay(
                     ZStack {
                         // Light top and left edges
@@ -44,7 +45,6 @@ struct BlockView: View {
                         }
                     }
                 )
-                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 1, y: 1)
                 .scaleEffect(isClearing ? (1 - animationProgress) : 1)
                 .opacity(isClearing ? (1 - animationProgress) : 1)
                 .animation(isClearing ? .easeOut(duration: 0.3) : .none, value: animationProgress)

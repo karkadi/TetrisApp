@@ -28,7 +28,7 @@ final class DefaultGameClient: GameClient {
         for block in piece.blocks {
             let row = state.piecePosition.row + block.row
             let column = state.piecePosition.column + block.column
-            if row >= state.board.count || column < 0 || column >= state.board[0].count {
+            if row < 0 || row >= state.board.count || column < 0 || column >= state.board[0].count {
                 return false
             }
             if row >= 0 && state.board[row][column] != nil {
@@ -71,8 +71,15 @@ final class DefaultGameClient: GameClient {
             return false // Game over
         }
         state.currentPiece = state.nextPiece
+        /*
+         var pieceToRotate = Tetromino.create(randomPiece())
+         for _ in 0..<Int.random(in: 0...3) {
+         pieceToRotate = pieceToRotate.rotated()
+         }
+         state.nextPiece = pieceToRotate
+         */
         state.nextPiece = Tetromino.create(randomPiece())
-        state.piecePosition = Position(row: 0, column: 4)
+        state.piecePosition = Position(row: state.currentPiece?.type == .i ? 2 : 0, column: 4)
         return canPlacePiece(state, state.currentPiece!)
     }
 
@@ -115,7 +122,7 @@ final class DefaultGameClient: GameClient {
         }
         return false
     }
-    
+
 }
 
 // MARK: - Dependency Keys

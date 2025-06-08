@@ -154,8 +154,7 @@ struct GameReducer {
                     state.piecePosition.row += 1
                 }
                 
-                return  .run { send in
-                    await send(.spawnNewPiece)
+                return .run { send in
                     _ = try await audioClient.play("drop")
                 }
                 

@@ -18,7 +18,7 @@ struct GameReducerTests {
         pivot: Position(row: 0, column: 1)
     )
 
-    @Test
+    @Test("Start Game")
     func startGame() async {
         let clock = DispatchQueue.test
         let store = TestStore( initialState: GameReducer.State() ) {
@@ -70,7 +70,7 @@ struct GameReducerTests {
         }
     }
 
-    @Test
+    @Test("Move piece in Game")
     func movePiece() async {
         var initialState = GameReducer.State()
         initialState.currentPiece = Tetromino.create(.i)
@@ -143,7 +143,7 @@ struct GameReducerTests {
         await blockedStore.send(.moveLeft) // Should not move
     }
 
-    @Test
+    @Test("Drop piece")
     func dropPiece() async {
         var initialState = GameReducer.State()
         initialState.currentPiece = Tetromino.create(.i)
@@ -188,8 +188,8 @@ struct GameReducerTests {
         await store.receive(\.checkLevelProgression)
     }
 
-    @Test
-    func clearLines_impl() async {
+    @Test("Clear lines")
+    func clearLines() async {
         let clock = DispatchQueue.test
         var board = GameReducer.State.emptyBoard
         board[19] = Array(repeating: BlockColor.i, count: 10) // Full row
@@ -287,7 +287,7 @@ struct GameReducerTests {
         await store.receive(\.checkHighScore)
     }
 
-    @Test
+    @Test("Check level up")
     func levelUp() async {
         let clock = DispatchQueue.test
         var initialState = GameReducer.State()
@@ -376,7 +376,7 @@ struct GameReducerTests {
         }
     }
 
-    @Test
+    @Test("High score")
     func highScore() async {
         var initialState = GameReducer.State()
         initialState.score = 500

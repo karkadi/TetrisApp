@@ -1,0 +1,51 @@
+{
+  "configurations" : [
+    {
+      "id" : "BA28DA28-E8EF-4227-97D6-38F264D069E7",
+      "name" : "Test Scheme Action",
+      "options" : {
+        "codeCoverage" : false,
+        "targetForVariableExpansion" : {
+          "containerPath" : "container:TetrisApp.xcodeproj",
+          "identifier" : "5B16B15A2DEB6319002EAE14",
+          "name" : "TetrisAppTests"
+        }
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:TetrisApp.xcodeproj",
+          "identifier" : "5B16B14D2DEB6318002EAE14",
+          "name" : "TetrisApp"
+        }
+      ]
+    },
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:TetrisApp.xcodeproj",
+      "identifier" : "5B16B1642DEB6319002EAE14",
+      "name" : "TetrisAppUITests"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:TetrisApp.xcodeproj",
+        "identifier" : "5B16B15A2DEB6319002EAE14",
+        "name" : "TetrisAppTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:TetrisApp.xcodeproj",
+        "identifier" : "5B16B1642DEB6319002EAE14",
+        "name" : "TetrisAppUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

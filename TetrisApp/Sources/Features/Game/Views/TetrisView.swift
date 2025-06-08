@@ -10,25 +10,29 @@ import ComposableArchitecture
 
 struct TetrisView: View {
     let store: StoreOf<GameReducer>
-
+    
     // MARK: - Drawing Constants
-    private let blockSize: CGFloat = 20
-
+    private var blockSize: CGFloat {
+        idiom == .pad ? 40 : 20
+    }
+    
+    private var idiom : UIUserInterfaceIdiom { UIDevice.current.userInterfaceIdiom }
+    
     var body: some View {
         VStack {
             // Score and controls
             scoreView
-
+            
             HStack {
                 Spacer()
                 // Game board
                 ZStack {
                     // Grid background
-                    BoardView(rows: store.board.count, columns: store.board[0].count)
-
+                    BoardView(rows: store.board.count, columns: store.board[0].count, blockSize: blockSize)
+                    
                     // Placed blocks
                     placedBlocksView
-
+                    
                     // Current piece
                     currentPieceView
                 }
@@ -38,8 +42,10 @@ struct TetrisView: View {
                 )
                 Spacer()
                 rightView
-
+                
             }
+            .frame(maxWidth: .infinity)
+            
             newLevelView
             Spacer()
             // Controls
@@ -60,7 +66,7 @@ struct TetrisView: View {
                             store.send(.moveLeft)
                         }
                     }
-
+                    
                     let vertical = gesture.translation.height
                     if vertical > 20 {
                         store.send(.moveDown)
@@ -70,43 +76,46 @@ struct TetrisView: View {
                 }
         )
     }
-
+    
     private var rightView: some View {
         VStack {
             // Next piece preview
             NextPieceView(nextPiece: store.nextPiece, blockSize: blockSize)
-
+            
             // Score and controls
             VStack(alignment: .center, spacing: 0) {
                 Text("Score")
-                    .font(.headline)
+                
                 Text("\(store.score)")
-                    .font(.headline)
+                
                 Text("Level")
-                    .font(.headline)
+                
                 Text("\(store.level)")
-                    .font(.headline)
+                
                 Text("Lines")
-                    .font(.headline)
+                
                 Text("\(store.linesCleared)/\(store.linesToNextLevel)")
-                    .font(.headline)
             }
+            .font(.headline)
+            .dynamicTypeSize(.medium)
             .frame(width: 90)
             .padding(.vertical,16)
             .background(.black)
             .cornerRadius(8)
             .offset(x: 4)
-
+            
             Button(action: { store.send(.toggleMute) }) {
                 Image(systemName: store.state.isMuted ? "speaker.slash" : "speaker" )
                     .frame(width: 25, height: 25)
                     .foregroundColor(.primary)
             }
+            .font(.title2)
+            .dynamicTypeSize(.medium)
             .buttonStyle(.bordered)
             .background(.black)
             .cornerRadius(8)
             .padding(.top,8)
-
+            
             Group {
                 if store.isGameOver {
                     Button(action: {
@@ -114,6 +123,7 @@ struct TetrisView: View {
                     }) {
                         Text("New Game")
                             .foregroundColor(.primary)
+                        
                     }
                 } else if store.isPaused {
                     Button(action: {
@@ -121,6 +131,7 @@ struct TetrisView: View {
                     }) {
                         Text("Resume")
                             .foregroundColor(.primary)
+                        
                     }
                 } else {
                     Button(action: {
@@ -131,19 +142,22 @@ struct TetrisView: View {
                     }
                 }
             }
+            .dynamicTypeSize(.medium)
             .buttonStyle(.bordered)
             .background(.black)
             .cornerRadius(8)
             .padding(.top,8)
         }
+        
     }
-
+    
     private var placedBlocksView: some View {
         ForEach(0..<store.board.count, id: \.self) { row in
             ForEach(0..<store.board[0].count, id: \.self) { column in
                 if let color = store.board[row][column] {
                     BlockView(
                         color: color,
+                        blockSize: blockSize,
                         isClearing: store.clearingLines.contains(row),
                         animationProgress: store.animationProgress
                     )
@@ -155,13 +169,13 @@ struct TetrisView: View {
             }
         }
     }
-
+    
     @ViewBuilder
     private var currentPieceView: some View {
         if let piece = store.currentPiece {
             ForEach(0..<piece.blocks.count, id: \.self) { index in
                 let block = piece.blocks[index]
-                BlockView(color: piece.type)
+                BlockView(color: piece.type, blockSize: blockSize)
                     .offset(
                         x: (CGFloat(store.piecePosition.column + block.column) - 3.5) * blockSize,
                         y: (CGFloat(store.piecePosition.row + block.row) - 8.5) * blockSize
@@ -169,17 +183,17 @@ struct TetrisView: View {
             }
         }
     }
-
+    
     private var scoreView: some View {
         VStack {
             Text("High Score: \(store.highScore)")
-                .font(.headline)
+                .font(.title2)
                 .foregroundColor(store.score > store.highScore && store.score > 0 ? .yellow : .primary)
-
+                .dynamicTypeSize(.medium)
         }
         .padding()
     }
-
+    
     private var newLevelView: some View {
         VStack {
             if store.isLevelTransitioning {
@@ -192,36 +206,37 @@ struct TetrisView: View {
         }
         .padding(.top, 40)
     }
-
+    
     private var controlsView: some View {
         HStack {
             Button(action: { store.send(.moveLeft) }) {
                 Image(systemName: "arrow.left")
-                    .frame(width: 60, height: 60)
-                    .foregroundColor(.primary)
+                    .frame(width: 90, height: 120)
             }
-
+            
             VStack {
                 Button(action: { store.send(.rotate) }) {
                     Image(systemName: "arrow.clockwise")
-                        .frame(width: 60, height: 60)
-                        .foregroundColor(.primary)
+                        .frame(width: 90, height: 60)
                 }
-
+                Spacer()
                 Button(action: { store.send(.drop) }) {
                     Image(systemName: "arrow.down")
-                        .frame(width: 60, height: 60)
-                        .foregroundColor(.primary)
+                        .frame(width: 90, height: 60)
                 }
             }
-
+            .frame(maxHeight: 180)
+            
             Button(action: { store.send(.moveRight) }) {
                 Image(systemName: "arrow.right")
-                    .frame(width: 60, height: 60)
-                    .foregroundColor(.primary)
+                    .frame(width: 90, height: 120)
             }
         }
         .font(.title)
+        .dynamicTypeSize(.medium)
+        .buttonStyle(ColoredButtonStyle(enabledColor: .primary,
+                                        disabledColor: .gray,
+                                        isEnabled: !store.isGameOver && !store.isPaused))
         .disabled(store.isGameOver || store.isPaused)
     }
 }

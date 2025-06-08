@@ -31,12 +31,12 @@ struct NextPieceView: View {
     
     var body: some View {
         VStack {
-            Text("Next:")
             if let nextPiece = nextPiece {
                 ZStack {
                     ForEach(0..<nextPiece.blocks.count, id: \.self) { index in
                         let block = nextPiece.blocks[index]
-                        BlockView(color: nextPiece.type)
+                        BlockView(color: nextPiece.type,
+                                  blockSize: blockSize)
                             .offset(
                                 x: (CGFloat(block.column) - xOffset) * blockSize,
                                 y: (CGFloat(block.row) - yOffset) * blockSize
