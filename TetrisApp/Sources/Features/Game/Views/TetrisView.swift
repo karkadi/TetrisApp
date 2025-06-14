@@ -8,6 +8,37 @@
 import SwiftUI
 import ComposableArchitecture
 
+/// The main game view for Tetris that renders the game board, controls, and game state
+///
+/// This SwiftUI view manages:
+/// - The game board grid with live piece and placed blocks
+/// - Next piece preview display
+/// - Score, level, and lines cleared tracking
+/// - Game controls (movement, rotation, pause)
+/// - Gesture-based piece manipulation
+///
+/// ## Game Elements
+/// - `BoardView`: Background grid representing the play area
+/// - `placedBlocksView`: Rendered settled Tetris blocks
+/// - `currentPieceView`: Actively falling Tetris piece
+/// - `NextPieceView`: Preview of upcoming piece
+/// - `scoreView`: Current/high score display
+///
+/// ## State Management
+/// Uses a `StoreOf<GameReducer>` (TCA architecture) for:
+/// - Game board state
+/// - Piece movement and rotation
+/// - Score tracking
+/// - Game lifecycle (paused/active/game over)
+///
+/// ## Gestures
+/// Supports drag gestures for:
+/// - Horizontal swipes â Left/right movement
+/// - Short upward swipe â Rotation
+/// - Downward swipe â Soft drop
+///
+/// ## Responsive Design
+/// Adapts block sizing based on device idiom (iPad vs iPhone)
 struct TetrisView: View {
     let store: StoreOf<GameReducer>
     

@@ -6,6 +6,23 @@
 //
 import SwiftUI
 
+/// A SwiftUI view that displays the next upcoming Tetromino piece in a Tetris game.
+///
+/// This view shows a preview of the next piece the player will receive, positioned within a styled
+/// container. It automatically adjusts the piece's positioning in its container based on the Tetromino
+/// type for optimal visual alignment.
+///
+/// - Parameters:
+///   - nextPiece: The upcoming Tetromino piece to display, or `nil` when no piece is available.
+///   - blockSize: The size (in points) of each individual block that makes up the Tetromino piece.
+///     This determines both the visual size and spacing between blocks.
+///
+/// The view uses internal offset calculations to properly center different Tetromino types:
+///   - I-piece: Horizontally centered with a specific x-offset adjustment
+///   - O-piece: Requires a different horizontal offset to appear centered
+///   - Other pieces: Use standard centering offsets
+///
+/// The Tetromino is displayed within a rounded rectangle with a dark semi-transparent background.
 struct NextPieceView: View {
     let nextPiece: Tetromino?
     let blockSize: CGFloat

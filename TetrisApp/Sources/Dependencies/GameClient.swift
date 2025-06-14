@@ -19,11 +19,21 @@ protocol GameClient {
     func checkLevelProgression( _ state: inout GameReducer.State) -> Bool
 }
 
+/// A concrete implementation of `GameClient` providing game logic for Tetris.
+/// Handles piece movement, collision detection, line clearing, and game progression.
+
+/// Generates a random Tetromino piece color (excluding the empty/clear state)
+/// - Returns: Randomly selected BlockColor value
 final class DefaultGameClient: GameClient {
     func randomPiece() -> BlockColor {
         BlockColor.allCases.dropLast().randomElement() ?? .i
     }
-
+    
+    /// Determines if a Tetromino piece can be placed at current position
+    /// - Parameters:
+    ///   - state: Current game state
+    ///   - piece: Tetromino piece to check placement for
+    /// - Returns: True if piece can be placed without collision or bounds violation, false otherwise
     func canPlacePiece(_ state: GameReducer.State, _ piece: Tetromino) -> Bool {
         for block in piece.blocks {
             let row = state.piecePosition.row + block.row
@@ -37,7 +47,12 @@ final class DefaultGameClient: GameClient {
         }
         return true
     }
-
+    
+    /// Checks if current piece can move by specified offset
+    /// - Parameters:
+    ///   - state: Current game state
+    ///   - offset: Movement delta (row and column) to validate
+    /// - Returns: True if piece can move without collision or bounds violation, false otherwise
     func canMovePiece(_ state: GameReducer.State, _ offset: (row: Int, column: Int)) -> Bool {
         guard let piece = state.currentPiece else { return false }
         let newPosition = Position(
@@ -56,7 +71,10 @@ final class DefaultGameClient: GameClient {
         }
         return true
     }
-
+    
+    /// Spawns a new piece at the top of the board
+    /// - Parameter state: Game state (modified in place)
+    /// - Returns: False if game is over (cannot place new piece), true otherwise
     func spawnPiece(_ state: inout GameReducer.State) -> Bool {
         if let piece = state.currentPiece {
             for block in piece.blocks {
@@ -82,7 +100,10 @@ final class DefaultGameClient: GameClient {
         state.piecePosition = Position(row: state.currentPiece?.type == .i ? 2 : 0, column: 4)
         return canPlacePiece(state, state.currentPiece!)
     }
-
+    
+    /// Identifies completely filled lines for clearing
+    /// - Parameter state: Game state (modified in place)
+    /// - Returns: Array of row indices that should be cleared
     func clearLines(_ state: inout GameReducer.State) -> [Int] {
         var linesToClear = [Int]()
         for row in (0..<state.board.count).reversed() {
@@ -92,7 +113,11 @@ final class DefaultGameClient: GameClient {
         }
         return linesToClear
     }
-
+    
+    /// Removes specified lines and shifts board down
+    /// - Parameters:
+    ///   - linesToClear: Row indices to remove
+    ///   - state: Game state (modified in place)
     func removeLines(_ linesToClear: [Int], _ state: inout GameReducer.State) {
         if !linesToClear.isEmpty {
             var newBoard = state.board
@@ -112,7 +137,10 @@ final class DefaultGameClient: GameClient {
             }
         }
     }
-
+    
+    /// Checks if player has reached next level threshold
+    /// - Parameter state: Game state (modified in place)
+    /// - Returns: True if level progression occurred (game updated), false otherwise
     func checkLevelProgression(_ state: inout GameReducer.State) -> Bool {
         if state.linesCleared >= state.linesToNextLevel {
             state.level += 1
@@ -122,7 +150,7 @@ final class DefaultGameClient: GameClient {
         }
         return false
     }
-
+    
 }
 
 // MARK: - Dependency Keys

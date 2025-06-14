@@ -6,6 +6,27 @@
 //
 import SwiftUI
 
+/// A visual representation of a Tetris block cube.
+///
+/// This view displays an individual game block with:
+/// - A solid foreground color
+/// - Simulated 3D lighting effects on the edges
+/// - Customizable clearing animations
+///
+/// ```swift
+/// BlockView(
+///     color: .blue,
+///     blockSize: 30,
+///     isClearing: false,
+///     animationProgress: 0
+/// )
+/// ```
+///
+/// - Parameters:
+///   - color: The color variant of the Tetris block (I/O/J/L/S/T/Z)
+///   - blockSize: The rendered dimensions of the square block view
+///   - isClearing: Whether the block is currently playing its removal animation
+///   - animationProgress: The normalized progress (0-1) of block dissolution when cleared
 struct BlockView: View {
     let color: BlockColor
     let blockSize: CGFloat

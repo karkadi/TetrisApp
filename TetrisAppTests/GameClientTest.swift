@@ -7,10 +7,26 @@
 import Testing
 @testable import TetrisApp
 
+/// Test suite for GameClient functionality in Tetris game.
+///
+/// Covers core game mechanics including:
+/// - Random piece generation
+/// - Piece placement validation
+/// - Piece movement mechanics
+/// - Piece spawning and game-over conditions
+/// - Line clearing detection
+/// - Score/level progression
+@MainActor
 struct GameClientTest {
 
+    // MARK: Random Piece Tests
+
+    /// Validates random piece generation logic
+    ///
+    /// Ensures:
+    /// - Generated pieces use valid colors
+    /// - Gray color is never returned (reserved for special states)
     @Test("Random Piece Generation")
-    @MainActor
     func testRandomPiece() async {
         let client = DefaultGameClient()
         let piece = client.randomPiece()
@@ -18,8 +34,15 @@ struct GameClientTest {
         #expect(BlockColor.allCases.dropLast().contains(piece), "Random piece should be a valid BlockColor except gray")
     }
 
+    // MARK: Piece Placement Tests
+
+    /// Verifies piece placement validation logic
+    ///
+    /// Tests:
+    /// - Placement in empty space validity
+    /// - Collision with boundaries
+    /// - Block collision scenarios
     @Test("Can Place Piece")
-    @MainActor
     func testCanPlacePiece() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()
@@ -38,9 +61,15 @@ struct GameClientTest {
         state.piecePosition = Position(row: 0, column: 4)
         #expect(!client.canPlacePiece(state, piece), "Piece should not be placeable on occupied space")
     }
+    // MARK: Movement Tests
 
+    /// Tests piece movement validation
+    ///
+    /// Covers:
+    /// - Valid movements within playable area
+    /// - Boundary collision detection
+    /// - Movement collision with placed blocks
     @Test("Can Move Piece")
-    @MainActor
     func testCanMovePiece() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()
@@ -61,8 +90,15 @@ struct GameClientTest {
         #expect(!client.canMovePiece(state, (0, 1)), "Piece should not move into occupied space")
     }
 
+    // MARK: Spawn Mechanic Tests
+
+    /// Validates piece spawning mechanics
+    ///
+    /// Checks:
+    /// - Successful spawn positioning and state updates
+    /// - Piece cycling (next piece becomes current)
+    /// - Game-over condition when immediate collision occurs
     @Test("Spawn Piece")
-    @MainActor
     func testSpawnPiece() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()
@@ -84,8 +120,15 @@ struct GameClientTest {
         #expect(!gameOverResult, "Should return false for game over")
     }
 
+    // MARK: Line Management Tests
+
+    /// Tests filled line detection
+    ///
+    /// Verifies:
+    /// - Detection of fully filled rows
+    /// - Proper identification of clearable lines
+    /// - Handling of non-clearable boards
     @Test("Clear Lines")
-    @MainActor
     func testClearLines() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()
@@ -102,8 +145,13 @@ struct GameClientTest {
         #expect(noLines.isEmpty, "Should detect no lines to clear")
     }
 
+    /// Tests line removal and state updates
+    ///
+    /// Confirms:
+    /// - Score calculation based on lines cleared
+    /// - Board reorganization after line removal
+    /// - Proper state resetting in cleared areas
     @Test("Remove Lines")
-    @MainActor
     func testRemoveLines() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()
@@ -122,8 +170,15 @@ struct GameClientTest {
         #expect(state.board[0][0] == nil, "Top rows should be empty after clearing")
     }
 
+    // MARK: Progression Tests
+
+    /// Validates level progression mechanics
+    ///
+    /// Ensures:
+    /// - Level advancement when clearing threshold lines
+    /// - Score multipliers based on level
+    /// - Game speed adjustments per level
     @Test("Check Level Progression")
-    @MainActor
     func testCheckLevelProgression() async {
         let client = DefaultGameClient()
         var state = GameReducer.State()

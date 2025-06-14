@@ -7,6 +7,36 @@
 import ComposableArchitecture
 import Foundation
 
+/// `GameReducer` manages the state and logic for a Tetris game using the Composable Architecture.
+///
+/// ## State:
+/// - `board`: 2D grid representing occupied blocks with `BlockColor`
+/// - `currentPiece`: Active falling tetromino
+/// - `nextPiece`: Upcoming tetromino piece
+/// - `piecePosition`: Current position of active piece
+/// - `gameSpeed`: Falling speed (decreases with level increases)
+/// - `score`/`highScore`: Current and best recorded scores
+/// - `isGameOver`/`isPaused`: Game state flags
+/// - `clearingLines`/`animationProgress`: Line-clearing animation state
+/// - `level`/`linesCleared`: Current level and cleared line count
+/// - `linesToNextLevel`: Lines required to level up
+/// - `isLevelTransitioning`: Level-up animation flag
+/// - `isMuted`: Audio mute state
+///
+/// ## Actions:
+/// - Game control: `startGame`, `pauseGame`, `resumeGame`, `endGame`
+/// - Movement: `moveLeft`, `moveRight`, `moveDown`, `rotate`, `drop`
+/// - Game loop: `tick` (triggers periodic downward movement)
+/// - Line management: `checkLines`, `startClearingLines`, `animateLineClearing`, `finishClearingLines`
+/// - Progression: `checkLevelProgression`, `levelUpComplete`
+/// - Audio: `toggleMute`
+/// - Scoring: `checkHighScore`
+///
+/// ## Dependencies:
+/// - `mainQueue`: Handles game timing
+/// - `gameClient`: Core game logic (movement validation, line clearing)
+/// - `audioClient`: Sound effect playback
+/// - `highScoreClient`: Persistent score storage
 @Reducer
 struct GameReducer {
     @ObservableState

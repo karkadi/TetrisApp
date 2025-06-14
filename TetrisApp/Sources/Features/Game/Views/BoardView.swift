@@ -6,6 +6,22 @@
 //
 import SwiftUI
 
+/// A SwiftUI view that renders a Tetris game board with surrounding borders.
+///
+/// The board consists of:
+///   - Main gameplay area (black background with grid lines)
+///   - Surrounding border (static gray blocks on all sides)
+///   - Top/bottom borders spanning full width
+///   - Left/right borders spanning play area height
+///
+/// - Parameters:
+///   - rows: Number of rows in the main gameplay area (excluding borders)
+///   - columns: Number of columns in the main gameplay area (excluding borders)
+///   - blockSize: Side length (in points) for each square block
+///
+/// - Note: Total view size accounts for borders (+2 blocks width/height)
+/// - Warning: Board assumes blockSize matches rendering units in parent view
+/// - Remark: Grid lines are offset to center gameplay area within borders
 struct BoardView: View {
     let rows: Int
     let columns: Int

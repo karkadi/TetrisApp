@@ -6,12 +6,33 @@
 //
 import Foundation
 import SwiftUI
+#if canImport(Playgrounds)
+import Playgrounds
+#endif
 
+/// A structure representing the position of a block in a two-dimensional grid.
+///
+/// The `Position` type consists of two integer properties: `row` and `column`
+/// which indicate the respective coordinates in the grid. This is commonly used
+/// to track the location of individual blocks within a tetromino in a Tetris game.
 struct Position: Equatable {
     var row: Int
     var column: Int
 }
 
+/// The color and type of a tetromino block.
+///
+/// Each case represents a specific tetromino shape with an associated display color.
+/// - i: I-shaped tetromino (cyan)
+/// - o: O-shaped tetromino (yellow)
+/// - t: T-shaped tetromino (purple)
+/// - j: J-shaped tetromino (blue)
+/// - l: L-shaped tetromino (orange)
+/// - s: S-shaped tetromino (green)
+/// - z: Z-shaped tetromino (red)
+/// - gray: Special single block (gray)
+///
+/// - color: SwiftUI color representation for this block type.
 enum BlockColor: Int, CaseIterable, Equatable {
     case i, o, t, j, l, s, z, gray
 }
@@ -31,11 +52,32 @@ extension BlockColor {
     }
 }
 
+/// A structure representing a tetromino in the Tetris game.
+///
+/// The `Tetromino` type consists of a tetromino's `type`, an array of `blocks` 
+/// that represent its position in a two-dimensional grid, and a `pivot` point 
+/// around which the tetromino can be rotated. Each tetromino shape has a unique 
+/// configuration of blocks and is associated with a specific color.
+///
+/// Properties:
+/// - `type`: The color and shape of the tetromino, represented by the `BlockColor` enum.
+/// - `blocks`: An array of `Position` representing the coordinates of each block in the tetromino.
+/// - `pivot`: A `Position` representing the pivot point for rotation.
+///
+/// Methods:
+/// - `create(_ type: BlockColor) -> Tetromino`: Creates a new tetromino of the specified type with its initial block positions and pivot.
+/// - `rotated() -> Tetromino`: Returns a new `Tetromino` instance that is rotated 90 degrees clockwise around its pivot point.
 struct Tetromino: Equatable {
     let type: BlockColor
     let blocks: [Position]
     let pivot: Position
 
+    /// Creates a new tetromino of the specified type with its initial block positions and pivot.
+    ///
+    /// - Parameter type: The `BlockColor` representing the type of tetromino to create.
+    /// - Returns: A `Tetromino` instance initialized with the block positions and pivot 
+    ///            associated with the specified `BlockColor` type. Each type has a unique 
+    ///            configuration of blocks and a designated pivot point for rotation.
     static func create(_ type: BlockColor) -> Tetromino {
         switch type {
         case .i:
@@ -96,6 +138,12 @@ struct Tetromino: Equatable {
         }
     }
 
+    /// Returns a new `Tetromino` that is rotated 90 degrees clockwise around its pivot.
+    ///
+    /// The rotation is performed by recalculating the position of each block 
+    /// relative to the tetromino's pivot point.
+    ///
+    /// - Returns: A new `Tetromino` instance with all block positions rotated.
     func rotated() -> Tetromino {
         var newBlocks = [Position]()
         for block in blocks {
@@ -106,3 +154,10 @@ struct Tetromino: Equatable {
         return Tetromino(type: type, blocks: newBlocks, pivot: pivot)
     }
 }
+
+#if canImport(Playgrounds)
+#Playground {
+    let tetromino = Tetromino.create(.t)
+    let rotatedTetromino = tetromino.rotated()
+}
+#endif

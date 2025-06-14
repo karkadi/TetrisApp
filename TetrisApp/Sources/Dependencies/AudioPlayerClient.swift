@@ -9,6 +9,31 @@
 import ComposableArchitecture
 import UIKit
 
+/// A client interface for playing audio assets and managing mute state.
+///
+/// This client provides a unified interface to:
+/// 1. Play audio assets from the app's asset catalog
+/// 2. Toggle global mute state affecting all playback
+///
+/// The implementation uses `AVAudioPlayer` under the hood and conforms to Swift Concurrency requirements.
+/// All methods are thread-safe and can be used from any execution context.
+/// 
+/// - Note: Audio assets must be added as `NSDataAsset` in the asset catalog.
+
+/// Asynchronously plays an audio asset from the app's bundle.
+///
+/// - Parameters:
+///   - name: The name of the audio asset (without extension) in the asset catalog
+/// - Returns: `true` if playback completed successfully, `false` if interrupted
+/// - Throws: AudioError when asset is missing or decoding fails
+/// - Important: Automatically respects current mute state. Won't play audio when muted.
+
+/// Toggles the global mute state for all audio playback.
+///
+/// - Returns: The new mute state (`true` = muted, `false` = unmuted)
+/// - Note: Immediately affects all player instances and future playback
+///   - Sets volume to 0 when muted
+///   - Restores volume to 1 when unmuted
 struct AudioPlayerClient {
     var play: @Sendable (String) async throws -> Bool
     var toggleMute: @Sendable () -> Bool
@@ -50,11 +75,11 @@ extension AudioPlayerClient: DependencyKey {
 
 private final class Delegate: NSObject, AVAudioPlayerDelegate, Sendable {
     static var sharedIsMuted = false
-
+    
     let didFinishPlaying: @Sendable (Bool) -> Void
     let decodeErrorDidOccur: @Sendable (Error?) -> Void
     let player: AVAudioPlayer
-
+    
     init(
         name: String,
         didFinishPlaying: @escaping @Sendable (Bool) -> Void,
@@ -71,11 +96,11 @@ private final class Delegate: NSObject, AVAudioPlayerDelegate, Sendable {
         self.player.volume = Self.sharedIsMuted ? 0 : 1
         AVAudioPlayerDelegateWrapper.shared = self
     }
-
+    
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         self.didFinishPlaying(flag)
     }
-
+    
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         self.decodeErrorDidOccur(error)
     }

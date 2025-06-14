@@ -9,6 +9,28 @@ import Testing
 import Foundation
 @testable import TetrisApp
 
+/// Test suite for GameReducer functionality in TetrisApp
+///
+/// Validates core game mechanics including:
+/// - Game initialization and state management
+/// - Piece movement and collision detection
+/// - Piece dropping mechanics
+/// - Line clearing animation sequences
+/// - Level progression logic
+/// - Audio feedback and mute functionality
+/// - High score tracking and persistence
+///
+/// Individual tests include:
+/// - `startGame`: Verifies game initialization flow and timer-based piece movement
+/// - `movePiece`: Tests horizontal piece movement with collision detection
+/// - `dropPiece`: Validates instant drop mechanics and piece spawning flow
+/// - `clearLines`: Tests full line detection, animation sequence, and scoring
+/// - `levelUp`: Verifies level progression thresholds and game speed adjustments
+/// - `toggleMute`: Tests audio mute toggling functionality
+/// - `highScore`: Validates high score tracking and persistence
+///
+/// Uses TestStore from Composable Architecture for state assertions and
+/// mock dependencies to isolate game logic from external services.
 @MainActor
 struct GameReducerTests {
     let mockPiece = Tetromino(
