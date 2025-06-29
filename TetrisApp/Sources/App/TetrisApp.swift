@@ -11,8 +11,8 @@ import ComposableArchitecture
 struct TetrisApp: App {
     var body: some Scene {
         WindowGroup {
-            TetrisView(store: Store( initialState: GameReducer.State()) {
-                GameReducer()
+            TetrisView(store: Store( initialState: TetrisReducer.State()) {
+                TetrisReducer()
             }
             )
             .preferredColorScheme(.dark)
