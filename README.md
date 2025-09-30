@@ -13,7 +13,7 @@ A classic Tetris game for iPhone, built with SwiftUI and The Composable Architec
 
 **Classic Tetris Gameplay:** Stack falling tetrominoes to clear lines and score points.
 
-**Demo Mode:** .
+**Demo Mode:** 
 
 **Responsive Controls:** Intuitive touch and swipe controls optimized for iPhone.
 
@@ -57,9 +57,9 @@ TetrisApp/
 ## 🚀 Installation
 Prerequisites
 
-*Xcode 16 or later
+* Xcode 16 or later
 
-*iOS 18 or later
+* iOS 18 or later
 
 ###Steps
 
@@ -71,27 +71,27 @@ cd TetrisApp
 ```
 2. Open the project in Xcode:
 
-*Launch Xcode and open TetrisApp.xcodeproj.
+* Launch Xcode and open TetrisApp.xcodeproj.
 
 3. Enable required capabilities:
 
-*In Xcode, navigate to the project settings.
+* In Xcode, navigate to the project settings.
 
-*Enable Game Center under the Capabilities tab for the app target.
+* Enable Game Center under the Capabilities tab for the app target.
 
 4. Build and run:
 
-*Select an iPhone simulator or device as the target.
+* Select an iPhone simulator or device as the target.
 
-*Build and run the app (Cmd + R) to install it on your device.
+* Build and run the app (Cmd + R) to install it on your device.
 
 ## 📋 Roadmap
 
-*Add demo mode with AI-driven gameplay.
+* Add demo mode with AI-driven gameplay.
 
-*Integrate Game Center for leaderboards and achievements.
+* Integrate Game Center for leaderboards and achievements.
 
-*Increase unit test coverage 
+* Increase unit test coverage 
 
 ## 🤝 Contribution
 
