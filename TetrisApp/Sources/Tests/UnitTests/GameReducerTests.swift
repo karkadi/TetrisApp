@@ -74,7 +74,7 @@ struct GameReducerTests {
         }
         await store.setExhaustivity(.off)
         
-        await store.send(.startGame) {
+        await store.send(.view(.startGame)) {
             $0.board = TetrisReducer.State.emptyBoard
             $0.currentPiece = self.mockPiece
             $0.nextPiece = self.mockPiece
@@ -128,11 +128,11 @@ struct GameReducerTests {
             )
         }
         
-        await store.send(.moveLeft) {
+        await store.send(.view(.moveLeft)) {
             $0.piecePosition.column = 3
         }
         
-        await store.send(.moveRight) {
+        await store.send(.view(.moveRight)) {
             $0.piecePosition.column = 4
         }
         
@@ -163,7 +163,7 @@ struct GameReducerTests {
             $0.settingsClient = MockSettingsClient(
             )
         }
-        await blockedStore.send(.moveLeft) // Should not move
+        await blockedStore.send(.view(.moveLeft)) // Should not move
     }
     
     @Test("Drop piece")
@@ -200,7 +200,7 @@ struct GameReducerTests {
             }
         await store.setExhaustivity(.off)
         
-        await store.send(.drop) {
+        await store.send(.view(.drop)) {
             $0.piecePosition.row = 19
         }
         
@@ -384,7 +384,7 @@ struct GameReducerTests {
         
         await store.setExhaustivity(.off)
         
-        await store.send(.toggleMute) {
+        await store.send(.view(.toggleMute)) {
             $0.isMuted = true
         }
     }
