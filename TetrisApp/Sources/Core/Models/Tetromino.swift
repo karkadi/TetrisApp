@@ -10,8 +10,8 @@ import SwiftUI
 /// A structure representing a tetromino in the Tetris game.
 ///
 /// The `Tetromino` type consists of a tetromino's `type`, an array of `blocks`
-/// that represent its position in a two-dimensional grid, and a `pivot` point 
-/// around which the tetromino can be rotated. Each tetromino shape has a unique 
+/// that represent its position in a two-dimensional grid, and a `pivot` point
+/// around which the tetromino can be rotated. Each tetromino shape has a unique
 /// configuration of blocks and is associated with a specific color.
 ///
 /// Properties:
@@ -27,11 +27,19 @@ struct Tetromino: Equatable {
     let blocks: [Position]
     let pivot: Position
     
+    var width: Int {
+        var maxColumn: Int = 0
+        for block in blocks where block.column > maxColumn {
+            maxColumn = block.column
+        }
+        return maxColumn + 1
+    }
+    
     /// Creates a new tetromino of the specified type with its initial block positions and pivot.
     ///
     /// - Parameter type: The `BlockColor` representing the type of tetromino to create.
-    /// - Returns: A `Tetromino` instance initialized with the block positions and pivot 
-    ///            associated with the specified `BlockColor` type. Each type has a unique 
+    /// - Returns: A `Tetromino` instance initialized with the block positions and pivot
+    ///            associated with the specified `BlockColor` type. Each type has a unique
     ///            configuration of blocks and a designated pivot point for rotation.
     static func create(_ type: BlockColor) -> Tetromino {
         switch type {
@@ -95,7 +103,7 @@ struct Tetromino: Equatable {
     
     /// Returns a new `Tetromino` that is rotated 90 degrees clockwise around its pivot.
     ///
-    /// The rotation is performed by recalculating the position of each block 
+    /// The rotation is performed by recalculating the position of each block
     /// relative to the tetromino's pivot point.
     ///
     /// - Returns: A new `Tetromino` instance with all block positions rotated.
@@ -108,4 +116,27 @@ struct Tetromino: Equatable {
         }
         return Tetromino(type: type, blocks: newBlocks, pivot: pivot)
     }
+    
+    func rotated(_ times: Int) -> Tetromino {
+        var tempPiece = self
+        for _ in 0..<times {
+            tempPiece = tempPiece.rotated()
+        }
+        return tempPiece
+    }
+    
+    func canPlace(board: [[BlockColor?]], pos: Position) -> Bool {
+        for block in blocks {
+            let row = pos.row + block.row
+            let column = pos.column + block.column
+            if row < 0 || row >= board.count || column < 0 || column >= board[0].count {
+                return false
+            }
+            if board[row][column] != nil {
+                return false
+            }
+        }
+        return true
+    }
+    
 }

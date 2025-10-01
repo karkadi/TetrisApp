@@ -1,6 +1,7 @@
 # 🚶‍♂️ Tetris
 
 A classic Tetris game for iPhone, built with SwiftUI and The Composable Architecture (TCA) for a modern, responsive, and testable gaming experience.
+Featuring an AI-powered Demo Mode driven by a neural network to showcase intelligent gameplay.
 
 ## 📸 Screenshots
 
@@ -11,9 +12,9 @@ A classic Tetris game for iPhone, built with SwiftUI and The Composable Architec
 
 ## ✨ Features
 
-**Classic Tetris Gameplay:** Stack falling tetrominoes to clear lines and score points.
+**Classic Tetris Gameplay:** Stack falling tetrominoes to clear lines, score points, and progress through increasing difficulty levels.
 
-**Demo Mode:** 
+**AI-Powered Demo Mode**: Watch an intelligent neural network play Tetris autonomously, optimizing moves based on learned strategies to maximize line clears and minimize board clutter.
 
 **Responsive Controls:** Intuitive touch and swipe controls optimized for iPhone.
 
@@ -21,15 +22,18 @@ A classic Tetris game for iPhone, built with SwiftUI and The Composable Architec
 
 **Unit Test Coverage:** 83% test coverage for robust and reliable code.
 
+## 🧠 AI and Neural Network
+
+The Demo Mode leverages a neural network to make intelligent move decisions. The AI evaluates the game state using a feature extractor that analyzes key metrics.
+The neural network is trained using a genetic algorithm through self-play, optimizing weights to prioritize moves that lead to higher scores and longer games. The `getBestMove` function calculates the optimal position and rotation for each tetromino based on these features, providing a compelling demonstration of AI-driven gameplay.
+
 ## 🛠 Tech Stack
 
-**Swift:** 5.0+
-
-**SwiftUI:** For UI, animations, and widgets
-
-**The Composable Architecture (TCA):** For modular and testable state management
-
-**Swift Concurrency (async/await):** For efficient game loop and background tasks
+- **Swift**: 5.0+ for modern and performant code.
+- **SwiftUI**: For declarative UI, smooth animations, and reusable widgets.
+- **The Composable Architecture (TCA)**: For modular, scalable, and testable state management.
+- **Swift Concurrency (async/await)**: For efficient game loop management and background tasks.
+- **Neural Network**: Custom implementation for AI-driven gameplay in Demo Mode, using a genetic algorithm for training.
 
 ## 🏗 Project Structure
 ```bash
@@ -39,6 +43,7 @@ TetrisApp/
  ├── Core/
  │    ├── Models/              # Game state, tetrominoes, score models
  │    ├── Services/            # Game logic, Game Center integration
+ │    │   └── NeuralNetwork/   # AI services
  │    └── Utils/               # Helpers and extensions
  │
  ├── Features/
@@ -87,11 +92,13 @@ cd TetrisApp
 
 ## 📋 Roadmap
 
-* Add demo mode with AI-driven gameplay.
+* Enhance AI training with more sophisticated algorithms and real-time feedback.
 
-* Integrate Game Center for leaderboards and achievements.
+* Integrate Game Center for global leaderboards and achievements.
 
-* Increase unit test coverage 
+* Increase unit test coverage to 90%+ for enhanced reliability.
+
+* Add customizable AI parameters for users to tweak Demo Mode behavior.
 
 ## 🤝 Contribution
 

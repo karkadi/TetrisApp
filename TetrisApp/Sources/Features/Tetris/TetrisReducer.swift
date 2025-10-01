@@ -40,6 +40,13 @@ import Foundation
 /// - `highScoreClient`: Persistent score storage
 @Reducer
 struct TetrisReducer {
+    
+    private enum TimerID {
+        case gameTimer
+        case lineClearAnimation
+        case demoTimer
+    }
+    
     @ObservableState
     struct State: Equatable {
         var board: [[BlockColor?]]
@@ -59,12 +66,12 @@ struct TetrisReducer {
         var isLevelTransitioning: Bool
         var isMuted: Bool
         var isDemoMode: Bool
-
+        
         static let emptyBoard: [[BlockColor?]] = Array(
             repeating: Array(repeating: nil, count: 10),
             count: 20
         )
-
+        
         init(isMuted: Bool = false, highScore: Int = 0) {
             self.board = State.emptyBoard
             self.currentPiece = nil
@@ -84,25 +91,16 @@ struct TetrisReducer {
             self.isMuted = isMuted
             self.isDemoMode = false
         }
-
+        
         static func speedForLevel(_ level: Int) -> Double {
             let baseSpeed = 1.0
             let speedReduction = min(Double(level - 1) * 0.05, 0.8)
             return baseSpeed - speedReduction
         }
     }
-
-    enum Action {
-        case onAppear
-        case startGame
-        case pauseGame
-        case resumeGame
+    
+    enum Action: ViewAction {
         case endGame
-        case moveLeft
-        case moveRight
-        case moveDown
-        case rotate
-        case drop
         case tick
         case checkLines
         case spawnNewPiece
@@ -111,65 +109,131 @@ struct TetrisReducer {
         case finishClearingLines
         case checkLevelProgression
         case levelUpComplete
-        case toggleMute
+        
         case checkHighScore
         // Demo actions
         case startDemo
         case tickDemo
         case stopDemo
+        case view(View)
+        // swiftlint:disable nesting
+        enum View {
+            case onAppear
+            case startGame
+            case pauseGame
+            case resumeGame
+            case moveLeft
+            case moveRight
+            case moveDown
+            case rotate
+            case toggleMute
+            case drop
+        }
+        // swiftlint:enable nesting
     }
-
+    
     @Dependency(\.mainQueue) var mainQueue
     @Dependency(\.gameClient) var gameClient
     @Dependency(\.audioClient) var audioClient
     @Dependency(\.settingsClient) var settingsClient
-
+    @Dependency(\.neuralNetworkTrainer) var neuralNetworkTrainer
+    @Dependency(\.neuralNetworkTetrisAI) var neuralNetworkTetrisAI
+    
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
-            case .onAppear:
-                let isMute = self.settingsClient.getIsMute()
-                state = State(isMuted: isMute, highScore: self.settingsClient.getHighScore())
-                state.isGameOver = true
-                state.isDemoMode = true
-                audioClient.setIsMuted(isMute)
-                return .merge(
-                    .send(.startDemo),
-                    .run { _ in
-                        _ = try await audioClient.play("TetrisTheme")
+            case let .view(viewAction):
+                switch viewAction {
+                case .onAppear:
+                    let isMute = self.settingsClient.getIsMute()
+                    state = State(isMuted: isMute, highScore: self.settingsClient.getHighScore())
+                    state.isGameOver = true
+                    state.isDemoMode = true
+                    audioClient.setIsMuted(isMute)
+                    
+                    // neuralNetworkTrainer.trainWithSelfPlay(1000)
+                    
+                    return .run { send in
+                        await send(.startDemo)
                     }
-                )
-
-            case .startGame:
-                state.isDemoMode = false
-                state = State(isMuted: audioClient.isMuted())
-                state.highScore = self.settingsClient.getHighScore()
-                state.currentPiece = Tetromino.create(gameClient.randomPiece())
-                state.nextPiece = Tetromino.create(gameClient.randomPiece())
-                audioClient.stop()
-                return .merge(
-                    .send(.stopDemo),
-                    .run { [state] send in
+                    
+                case .startGame:
+                    state.isDemoMode = false
+                    state = State(isMuted: audioClient.isMuted())
+                    state.highScore = self.settingsClient.getHighScore()
+                    state.currentPiece = Tetromino.create(gameClient.randomPiece())
+                    state.nextPiece = Tetromino.create(gameClient.randomPiece())
+                    audioClient.stop()
+                    return .merge(
+                        .send(.stopDemo),
+                        .run { [state] send in
+                            for await _ in self.mainQueue.timer(interval: .seconds(state.gameSpeed)) {
+                                await send(.tick)
+                            }
+                        }
+                            .cancellable(id: TimerID.gameTimer)
+                    )
+                    
+                case .pauseGame:
+                    state.isPaused = true
+                    return .cancel(id: TimerID.gameTimer)
+                    
+                case .resumeGame:
+                    state.isPaused = false
+                    return .run { [state] send in
                         for await _ in self.mainQueue.timer(interval: .seconds(state.gameSpeed)) {
                             await send(.tick)
                         }
                     }
-                        .cancellable(id: TimerID.gameTimer)
-                )
-
-            case .pauseGame:
-                state.isPaused = true
-                return .cancel(id: TimerID.gameTimer)
-
-            case .resumeGame:
-                state.isPaused = false
-                return .run { [state] send in
-                    for await _ in self.mainQueue.timer(interval: .seconds(state.gameSpeed)) {
-                        await send(.tick)
+                    .cancellable(id: TimerID.gameTimer)
+                    
+                    // Block user controls
+                case .moveLeft:
+                    guard !state.isPaused else { return .none }
+                    if gameClient.canMovePiece(state, (0, -1)) {
+                        state.piecePosition.column -= 1
                     }
+                    return .none
+                    
+                case .moveRight:
+                    guard !state.isPaused else { return .none }
+                    if gameClient.canMovePiece(state, (0, 1)) {
+                        state.piecePosition.column += 1
+                    }
+                    return .none
+                    
+                case .moveDown:
+                    guard !state.isPaused else { return .none }
+                    if gameClient.canMovePiece(state, (1, 0)) {
+                        state.piecePosition.row += 1
+                        return .none
+                    } else {
+                        return .send(.spawnNewPiece)
+                    }
+                    
+                case .rotate:
+                    guard !state.isPaused else { return .none }
+                    if let rotated = state.currentPiece?.rotated(), gameClient.canPlacePiece(state, rotated) {
+                        state.currentPiece = rotated
+                    }
+                    return .none
+                    
+                case .drop:
+                    guard !state.isPaused else { return .none }
+                    while gameClient.canMovePiece(state, (1, 0)) {
+                        state.piecePosition.row += 1
+                    }
+                    
+                    return .run { _ in
+                        _ = try await audioClient.play("drop")
+                    }
+                    
+                case .toggleMute:
+                    state.isMuted = audioClient.toggleMute()
+                    settingsClient.setIsMute(state.isMuted)
+                    return .none
                 }
-                .cancellable(id: TimerID.gameTimer)
-
+                
             case .endGame:
                 state.isGameOver = true
                 return .merge(
@@ -177,58 +241,17 @@ struct TetrisReducer {
                     .run { _ in
                         _ = try await audioClient.play("TetrisTheme")
                     })
-
-                // Block user controls when in demo mode
-            case .moveLeft:
-                guard !state.isPaused else { return .none }
-                if gameClient.canMovePiece(state, (0, -1)) {
-                    state.piecePosition.column -= 1
-                }
-                return .none
-
-            case .moveRight:
-                guard !state.isPaused else { return .none }
-                if gameClient.canMovePiece(state, (0, 1)) {
-                    state.piecePosition.column += 1
-                }
-                return .none
-
-            case .moveDown:
-                guard !state.isPaused else { return .none }
-                if gameClient.canMovePiece(state, (1, 0)) {
-                    state.piecePosition.row += 1
-                    return .none
-                } else {
-                    return .send(.spawnNewPiece)
-                }
-
-            case .rotate:
-                guard !state.isPaused else { return .none }
-                if let rotated = state.currentPiece?.rotated(), gameClient.canPlacePiece(state, rotated) {
-                    state.currentPiece = rotated
-                }
-                return .none
-
-            case .drop:
-                guard !state.isPaused else { return .none }
-                while gameClient.canMovePiece(state, (1, 0)) {
-                    state.piecePosition.row += 1
-                }
-
-                return .run { _ in
-                    _ = try await audioClient.play("drop")
-                }
-
+                
             case .tick:
                 guard !state.isGameOver, !state.isPaused else { return .none }
-                return .send(.moveDown)
-
+                return .send(.view(.moveDown))
+                
             case .checkLines:
                 let linesToClear = gameClient.clearLines(&state)
                 if !linesToClear.isEmpty {
                     state.clearingLines = linesToClear
                     state.animationProgress = 0
-
+                    
                     return .merge(
                         .send(.startClearingLines(linesToClear)),
                         .run { send in
@@ -240,22 +263,22 @@ struct TetrisReducer {
                     )
                 }
                 return .send(.checkLevelProgression)
-
+                
             case .startClearingLines:
                 return .run { _ in
                     _ = try await audioClient.play("line_clear")
                 }
-
+                
             case .animateLineClearing:
                 state.animationProgress += 0.05
                 if state.animationProgress >= 1 {
                     return .send(.finishClearingLines)
                 }
                 return .none
-
+                
             case .finishClearingLines:
                 gameClient.removeLines(state.clearingLines, &state)
-
+                
                 state.clearingLines = []
                 state.animationProgress = 0
                 return .merge(
@@ -263,7 +286,7 @@ struct TetrisReducer {
                     .send(.checkLevelProgression),
                     .send(.checkHighScore)
                 )
-
+                
             case .spawnNewPiece:
                 if !gameClient.spawnPiece(&state) {
                     return .merge(
@@ -272,7 +295,7 @@ struct TetrisReducer {
                     )
                 }
                 return .send(.checkLines)
-
+                
             case .checkLevelProgression:
                 if gameClient.checkLevelProgression(&state) {
                     state.isLevelTransitioning = true
@@ -287,7 +310,7 @@ struct TetrisReducer {
                     )
                 }
                 return .none
-
+                
             case .levelUpComplete:
                 state.isLevelTransitioning = false
                 if !state.isPaused && !state.isGameOver {
@@ -299,48 +322,48 @@ struct TetrisReducer {
                     .cancellable(id: TimerID.gameTimer)
                 }
                 return .none
-
-            case .toggleMute:
-                state.isMuted = audioClient.toggleMute()
-                settingsClient.setIsMute(state.isMuted)
-                return .none
-
+            
             case .checkHighScore:
-                if state.score > state.highScore {
+                if state.score > state.highScore && !state.isDemoMode {
                     state.highScore = state.score
                     settingsClient.setHighScore(state.highScore)
                 }
                 return .none
-
+                
                 // Demo related actions
             case .startDemo:
                 state.isDemoMode = true
                 state.currentPiece = Tetromino.create(gameClient.randomPiece())
                 state.nextPiece = Tetromino.create(gameClient.randomPiece())
                 return .run { send in
-                    for await _ in self.mainQueue.timer(interval: .seconds(0.2)) {
+                    for await _ in self.mainQueue.timer(interval: .seconds(0.1)) {
                         await send(.tickDemo)
                     }
                 }
                 .cancellable(id: TimerID.demoTimer)
-
+                
             case .stopDemo:
                 audioClient.stop()
                 return .cancel(id: TimerID.demoTimer)
-
+                
             case .tickDemo:
-                return .run { send in
-                    let moves: [TetrisReducer.Action] = [.moveLeft, .moveRight, .rotate]
-                    await send(moves.randomElement() ?? .rotate)
-                    await send(.moveDown)
+                return .run { [state] send in
+                    if let currentPiece = state.currentPiece {
+                        let bestMove = neuralNetworkTetrisAI.getBestMove(state.board, currentPiece, state.nextPiece)
+                        // print("Test move: \(bestMove)")
+                        
+                        if bestMove.rotation > 0 {
+                            await send(.view(.rotate))
+                        }
+                        if bestMove.x > state.piecePosition.column {
+                            await send(.view(.moveRight))
+                        } else if bestMove.x < state.piecePosition.column {
+                            await send(.view(.moveLeft))
+                        }
+                    }
+                    await send(.view(.moveDown))
                 }
             }
         }
-    }
-
-    private enum TimerID {
-        case gameTimer
-        case lineClearAnimation
-        case demoTimer
     }
 }

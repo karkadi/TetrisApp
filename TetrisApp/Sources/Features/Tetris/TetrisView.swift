@@ -39,6 +39,7 @@ import ComposableArchitecture
 ///
 /// ## Responsive Design
 /// Adapts block sizing based on device idiom (iPad vs iPhone)
+@ViewAction(for: TetrisReducer.self)
 struct TetrisView: View {
     let store: StoreOf<TetrisReducer>
 
@@ -84,7 +85,7 @@ struct TetrisView: View {
         }
         .background(Color.white.opacity(0.3))
         .onAppear {
-            store.send(.onAppear)
+            send(.onAppear)
         }
         .gesture(
             DragGesture()
@@ -92,17 +93,17 @@ struct TetrisView: View {
                     let horizontal = gesture.translation.width
                     if abs(horizontal) > 20 {
                         if horizontal > 0 {
-                            store.send(.moveRight)
+                            send(.moveRight)
                         } else {
-                            store.send(.moveLeft)
+                            send(.moveLeft)
                         }
                     }
 
                     let vertical = gesture.translation.height
                     if vertical > 20 {
-                        store.send(.moveDown)
+                        send(.moveDown)
                     } else if vertical < -20 {
-                        store.send(.rotate)
+                        send(.rotate)
                     }
                 }
         )
@@ -135,7 +136,7 @@ struct TetrisView: View {
             .cornerRadius(8)
             .offset(x: 4)
 
-            Button(action: { store.send(.toggleMute) }, label: {
+            Button(action: { send(.toggleMute) }, label: {
                 Image(systemName: store.state.isMuted ? "speaker.slash" : "speaker" )
                     .frame(width: 25, height: 25)
                     .foregroundColor(.primary)
@@ -150,21 +151,21 @@ struct TetrisView: View {
             Group {
                 if store.isGameOver {
                     Button(action: {
-                        store.send(.startGame)
+                        send(.startGame)
                     }, label: {
                         Text("New Game")
                             .foregroundColor(.primary)
                     })
                 } else if store.isPaused {
                     Button(action: {
-                        store.send(.resumeGame)
+                        send(.resumeGame)
                     }, label: {
                         Text("Resume")
                             .foregroundColor(.primary)
                     })
                 } else {
                     Button(action: {
-                        store.send(.pauseGame)
+                        send(.pauseGame)
                     }, label: {
                         Text("Pause")
                             .foregroundColor(.primary)
@@ -243,22 +244,22 @@ struct TetrisView: View {
     private var controlsView: some View {
         HStack {
             GameButton(systemName: "arrow.left", width: 90, height: 120, isEnabled: isEnabled ) {
-                store.send(.moveLeft)
+                send(.moveLeft)
             }
             
             VStack {
                 GameButton(systemName: "arrow.clockwise", width: 90, height: 60, isEnabled: isEnabled ) {
-                    store.send(.rotate)
+                    send(.rotate)
                 }
                 Spacer()
                 GameButton(systemName: "arrow.down", width: 90, height: 60, isEnabled: isEnabled ) {
-                    store.send(.drop)
+                    send(.drop)
                 }
             }
             .frame(maxHeight: 180)
 
             GameButton(systemName: "arrow.right", width: 90, height: 120, isEnabled: isEnabled ) {
-                store.send(.moveRight)
+                send(.moveRight)
             }
         }
     }
