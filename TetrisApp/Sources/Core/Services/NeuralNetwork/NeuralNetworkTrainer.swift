@@ -61,12 +61,17 @@ extension NeuralNetworkTrainer: DependencyKey {
                         }
                         let pos = Position(row: dropRow, column: col)
                         if rotated.canPlace(board: board, pos: pos) {
-                            let features = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
-                            let score = sharedNeuralNetwork.evaluate(features)
-                            if score > bestScore {
-                                bestScore = score
-                                bestX = col
-                                bestRot = rot
+                            let result = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
+                            let score1 = sharedNeuralNetwork.evaluate(result.features)
+                            var thisScore = score1
+                            if let next = state.nextPiece {
+                                let maxScore2 = sharedNeuralNetwork.bestPlacementScore(for: next, on: result.boardAfter)
+                                thisScore += maxScore2
+                                if thisScore > bestScore {
+                                    bestScore = thisScore
+                                    bestX = col
+                                    bestRot = rot
+                                }
                             }
                         }
                     }
@@ -76,11 +81,17 @@ extension NeuralNetworkTrainer: DependencyKey {
                 while gameClient.canMovePiece(state, (row: 1, column: 0)) {
                     state.piecePosition.row += 1
                 }
-                if !gameClient.spawnPiece(&state) {
-                    break
+                // Lock the piece into the board
+                for block in state.currentPiece!.blocks {
+                    let row = state.piecePosition.row + block.row
+                    let column = state.piecePosition.column + block.column
+                    state.board[row][column] = state.currentPiece!.type
                 }
                 let lines = gameClient.clearLines(&state)
                 gameClient.removeLines(lines, &state)
+                if !gameClient.spawnPiece(&state) {
+                    break
+                }
                 _ = gameClient.checkLevelProgression(&state)
             }
             return Double(state.linesCleared)

@@ -49,7 +49,7 @@ extension NeuralNetworkTetrisAI: DependencyKey {
             loadPretrainedModel: { path in
                 sharedNeuralNetwork.load(from: path)
             },
-            getBestMove: { board, currentPiece, _ in
+            getBestMove: { board, currentPiece, nextPiece in
                 var bestScore = -Double.infinity
                 var bestX = 0
                 var bestRot = 0
@@ -69,10 +69,15 @@ extension NeuralNetworkTetrisAI: DependencyKey {
                         }
                         let pos = Position(row: dropRow, column: col)
                         if rotated.canPlace(board: board, pos: pos) {
-                            let features = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
-                            let score = sharedNeuralNetwork.evaluate(features)
-                            if score > bestScore {
-                                bestScore = score
+                            let result = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
+                            let score1 = sharedNeuralNetwork.evaluate(result.features)
+                            var thisScore = score1
+                            if let next = nextPiece {
+                                let maxScore2 = sharedNeuralNetwork.bestPlacementScore(for: next, on: result.boardAfter)
+                                thisScore += maxScore2
+                            }
+                            if thisScore > bestScore {
+                                bestScore = thisScore
                                 bestX = col
                                 bestRot = rot
                             }

@@ -5,9 +5,14 @@
 //  Created by Arkadiy KAZAZYAN on 30/09/2025.
 //
 
+struct ExtractionResult {
+    let features: [Double]
+    let boardAfter: [[BlockColor?]]
+}
+
 /// `TetrisFeatureExtractor` is responsible for analyzing the Tetris board after placing a tetromino and extracting numerical features.
-/// 
-/// This struct provides a method to evaluate a given board state for purposes such as AI decision-making or analytics. 
+///
+/// This struct provides a method to evaluate a given board state for purposes such as AI decision-making or analytics.
 /// The features extracted can help inform algorithms or systems about the structural properties and score opportunities of the board.
 ///
 /// - Features extracted (in order):
@@ -17,9 +22,9 @@
 ///   4. **Bumpiness:** The sum of absolute differences between the heights of adjacent columns, measuring how uneven the surface is.
 ///
 /// - Usage:
-///     Call `extractFeatures(board:afterPlacing:at:)` with the current board, the tetromino, and placement position to receive a `[Double]` containing these values.
+///     Call `extractFeatures(board:afterPlacing:at:)` with the current board, the tetromino, and placement position to receive an `ExtractionResult` containing these values and the board state after placement and line clearing.
 struct TetrisFeatureExtractor {
-    func extractFeatures(board: [[BlockColor?]], afterPlacing piece: Tetromino, at position: Position) -> [Double] {
+    func extractFeatures(board: [[BlockColor?]], afterPlacing piece: Tetromino, at position: Position) -> ExtractionResult {
         var tempBoard = board
         for block in piece.blocks {
             let row = position.row + block.row
@@ -42,8 +47,8 @@ struct TetrisFeatureExtractor {
         var heights = [Int](repeating: 0, count: newBoard[0].count)
         for column in 0..<newBoard[0].count {
             for row in 0..<newBoard.count where newBoard[row][column] != nil {
-                    heights[column] = newBoard.count - row
-                    break
+                heights[column] = newBoard.count - row
+                break
             }
         }
         
@@ -66,6 +71,7 @@ struct TetrisFeatureExtractor {
             }
         }
         
-        return [Double(aggregateHeight), Double(linesCleared), Double(holes), Double(bumpiness)]
+        let features = [Double(aggregateHeight), Double(linesCleared), Double(holes), Double(bumpiness)]
+        return ExtractionResult(features: features, boardAfter: newBoard)
     }
 }
