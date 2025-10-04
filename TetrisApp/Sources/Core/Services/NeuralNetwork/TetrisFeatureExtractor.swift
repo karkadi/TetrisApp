@@ -5,6 +5,9 @@
 //  Created by Arkadiy KAZAZYAN on 30/09/2025.
 //
 
+// The feature extractor remains a constant, assumed to be stateless and Sendable.
+let sharedFeatureExtractor = TetrisFeatureExtractor()
+
 struct ExtractionResult {
     let features: [Double]
     let boardAfter: [[BlockColor?]]

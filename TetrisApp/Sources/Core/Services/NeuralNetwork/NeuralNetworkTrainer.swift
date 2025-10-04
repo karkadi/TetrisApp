@@ -31,9 +31,12 @@ struct NeuralNetworkTrainer: Sendable {
 /// - SeeAlso: `DependencyKey`, `DependencyValues`
 extension NeuralNetworkTrainer: DependencyKey {
     static let liveValue: NeuralNetworkTrainer = {
-        @Sendable func playGame(with weights: [Double]) -> Double {
-            sharedNeuralNetwork.weights = weights
-            let gameClient = GameClientKey.liveValue
+        // The playGame function must now be async as it interacts with the actor
+        @Sendable func playGame(with weights: [Double]) async -> Double {
+            // Mutate state via actor and await
+            await networkManager.setWeights(weights)
+            
+            let gameClient = GameClient.liveValue
             var state = TetrisReducer.State()
             state.nextPiece = Tetromino.create(gameClient.randomPiece())
             if !gameClient.spawnPiece(&state) {
@@ -62,10 +65,13 @@ extension NeuralNetworkTrainer: DependencyKey {
                         let pos = Position(row: dropRow, column: col)
                         if rotated.canPlace(board: board, pos: pos) {
                             let result = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
-                            let score1 = sharedNeuralNetwork.evaluate(result.features)
+                            
+                            // Read state via actor and await
+                            let score1 = await networkManager.evaluate(features: result.features)
                             var thisScore = score1
                             if let next = state.nextPiece {
-                                let maxScore2 = sharedNeuralNetwork.bestPlacementScore(for: next, on: result.boardAfter)
+                                // Read state via actor and await
+                                let maxScore2 = await networkManager.bestPlacementScore(for: next, on: result.boardAfter)
                                 thisScore += maxScore2
                                 if thisScore > bestScore {
                                     bestScore = thisScore
@@ -98,58 +104,77 @@ extension NeuralNetworkTrainer: DependencyKey {
         }
         
         return NeuralNetworkTrainer(
-            trainWithSelfPlay: { episodes  in
-                let populationSize = 20
-                let mutationRate = 0.1
-                let crossoverRate = 0.7
-                var population: [[Double]] = (0..<populationSize).map { _ in
-                    (0..<4).map { _ in Double.random(in: -1...1) }
-                }
-                for _ in 0..<episodes {
-                    var fitness: [Double] = []
+            trainWithSelfPlay: { episodes in
+                // Wrap the training loop in an un-awaited Task to run it in the background
+                // without blocking the main thread, while still safely interacting with the actor.
+                Task {
+                    let populationSize = 20
+                    let mutationRate = 0.1
+                    let crossoverRate = 0.7
+                    var population: [[Double]] = (0..<populationSize).map { _ in
+                        (0..<4).map { _ in Double.random(in: -1...1) }
+                    }
+                    for _ in 0..<episodes {
+                        var fitness: [Double] = []
+                        // Running the games concurrently for speed
+                        let gameResults = try await withThrowingTaskGroup(of: Double.self, returning: [Double].self) { group in
+                            for weights in population {
+                                group.addTask {
+                                    // Must await the async playGame
+                                    return await playGame(with: weights)
+                                }
+                            }
+                            var results: [Double] = []
+                            for try await result in group {
+                                results.append(result)
+                            }
+                            return results
+                        }
+                        fitness = gameResults
+                        
+                        let sortedIndices = fitness.indices.sorted { fitness[$0] > fitness[$1] }
+                        var newPopulation: [[Double]] = []
+                        for index in stride(from: 0, to: populationSize, by: 2) {
+                            let p1Index = sortedIndices[index % sortedIndices.count]
+                            let p2Index = sortedIndices[(index + 1) % sortedIndices.count]
+                            let popul1 = population[p1Index]
+                            let popul2 = population[p2Index]
+                            var child1 = popul1
+                            var child2 = popul2
+                            if Double.random(in: 0..<1) < crossoverRate {
+                                let point = Int.random(in: 1..<4)
+                                child1 = Array(popul1[0..<point] + popul2[point..<4])
+                                child2 = Array(popul2[0..<point] + popul1[point..<4])
+                            }
+                            child1 = child1.map { value in
+                                Double.random(in: 0..<1) < mutationRate ? value + Double.random(in: -0.5..<0.5) : value
+                            }
+                            child2 = child2.map { value in
+                                Double.random(in: 0..<1) < mutationRate ? value + Double.random(in: -0.5..<0.5) : value
+                            }
+                            newPopulation.append(child1)
+                            if newPopulation.count < populationSize {
+                                newPopulation.append(child2)
+                            }
+                        }
+                        population = newPopulation
+                    }
+                    var bestFitness = -Double.infinity
+                    var bestWeights: [Double] = []
                     for weights in population {
-                        fitness.append(playGame(with: weights))
-                    }
-                    let sortedIndices = fitness.indices.sorted { fitness[$0] > fitness[$1] }
-                    var newPopulation: [[Double]] = []
-                    for index in stride(from: 0, to: populationSize, by: 2) {
-                        let p1Index = sortedIndices[index % sortedIndices.count]
-                        let p2Index = sortedIndices[(index + 1) % sortedIndices.count]
-                        let popul1 = population[p1Index]
-                        let popul2 = population[p2Index]
-                        var child1 = popul1
-                        var child2 = popul2
-                        if Double.random(in: 0..<1) < crossoverRate {
-                            let point = Int.random(in: 1..<4)
-                            child1 = Array(popul1[0..<point] + popul2[point..<4])
-                            child2 = Array(popul2[0..<point] + popul1[point..<4])
-                        }
-                        child1 = child1.map { value in
-                            Double.random(in: 0..<1) < mutationRate ? value + Double.random(in: -0.5..<0.5) : value
-                        }
-                        child2 = child2.map { value in
-                            Double.random(in: 0..<1) < mutationRate ? value + Double.random(in: -0.5..<0.5) : value
-                        }
-                        newPopulation.append(child1)
-                        if newPopulation.count < populationSize {
-                            newPopulation.append(child2)
+                        let fitness = await playGame(with: weights) // Final evaluation run
+                        if fitness > bestFitness {
+                            bestFitness = fitness
+                            bestWeights = weights
                         }
                     }
-                    population = newPopulation
+                    // Mutate state via actor and await
+                    await networkManager.setWeights(bestWeights)
                 }
-                var bestFitness = -Double.infinity
-                var bestWeights: [Double] = []
-                for weights in population {
-                    let fitness = playGame(with: weights)
-                    if fitness > bestFitness {
-                        bestFitness = fitness
-                        bestWeights = weights
-                    }
-                }
-                sharedNeuralNetwork.weights = bestWeights
             },
             loadPretrainedModel: { path in
-                sharedNeuralNetwork.load(from: path)
+                // Wrap the mutation in a non-awaiting Task
+                Task { await networkManager.load(from: path) }
             }
         )
     }()

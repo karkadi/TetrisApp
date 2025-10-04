@@ -6,12 +6,10 @@
 //
 
 import Dependencies
-var sharedNeuralNetwork = TetrisNeuralNetwork()
-var sharedFeatureExtractor = TetrisFeatureExtractor()
 
 struct NeuralNetworkTetrisAI: Sendable {
-    var loadPretrainedModel: @Sendable (_ path: String) -> Void
-    var getBestMove: @Sendable (_ board: [[BlockColor?]], _ currentPiece: Tetromino, _ nextPiece: Tetromino?) -> (x: Int, rotation: Int)
+    var loadPretrainedModel: @Sendable (_ path: String) async -> Void
+    var getBestMove: @Sendable (_ board: [[BlockColor?]], _ currentPiece: Tetromino, _ nextPiece: Tetromino?) async -> (x: Int, rotation: Int)
 }
 
 /// `NeuralNetworkTetrisAI` encapsulates the logic for a Tetris AI powered by a neural network.
@@ -47,7 +45,8 @@ extension NeuralNetworkTetrisAI: DependencyKey {
     static let liveValue: NeuralNetworkTetrisAI = {
         return NeuralNetworkTetrisAI(
             loadPretrainedModel: { path in
-                sharedNeuralNetwork.load(from: path)
+                // 4. Await actor call for mutation
+                await networkManager.load(from: path)
             },
             getBestMove: { board, currentPiece, nextPiece in
                 var bestScore = -Double.infinity
@@ -70,10 +69,13 @@ extension NeuralNetworkTetrisAI: DependencyKey {
                         let pos = Position(row: dropRow, column: col)
                         if rotated.canPlace(board: board, pos: pos) {
                             let result = sharedFeatureExtractor.extractFeatures(board: board, afterPlacing: rotated, at: pos)
-                            let score1 = sharedNeuralNetwork.evaluate(result.features)
+                            
+                            // 4. Await actor call for reading (evaluation)
+                            let score1 = await networkManager.evaluate(features: result.features)
                             var thisScore = score1
                             if let next = nextPiece {
-                                let maxScore2 = sharedNeuralNetwork.bestPlacementScore(for: next, on: result.boardAfter)
+                                // 4. Await actor call for reading (two-step lookahead)
+                                let maxScore2 = await networkManager.bestPlacementScore(for: next, on: result.boardAfter)
                                 thisScore += maxScore2
                             }
                             if thisScore > bestScore {

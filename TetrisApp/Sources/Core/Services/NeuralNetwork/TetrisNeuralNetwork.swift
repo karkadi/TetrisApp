@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Accelerate
 
 /// A simple neural network model for evaluating Tetris board states based on feature weights.
 ///
@@ -28,7 +27,7 @@ import Accelerate
 /// - Feature evaluation
 /// - Heuristic-based scoring
 /// - Neural network weight management
-struct TetrisNeuralNetwork {
+struct TetrisNeuralNetwork: Sendable {
     var weights: [Double]
     
     init() {

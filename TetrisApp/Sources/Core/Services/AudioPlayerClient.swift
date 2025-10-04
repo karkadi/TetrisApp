@@ -1,5 +1,5 @@
 //
-//  Delegate.swift
+//  AudioPlayerClient.swift
 //  TetrisApp
 //
 //  Created by Arkadiy KAZAZYAN on 02/06/2025.
@@ -9,41 +9,54 @@
 import ComposableArchitecture
 import UIKit
 
-/// A client interface for playing audio assets and managing mute state.
-///
-/// This client provides a unified interface to:
-/// 1. Play audio assets from the app's asset catalog
-/// 2. Toggle global mute state affecting all playback
-///
-/// The implementation uses `AVAudioPlayer` under the hood and conforms to Swift Concurrency requirements.
-/// All methods are thread-safe and can be used from any execution context.
-///
-/// - Note: Audio assets must be added as `NSDataAsset` in the asset catalog.
-
-/// Asynchronously plays an audio asset from the app's bundle.
-///
-/// - Parameters:
-///   - name: The name of the audio asset (without extension) in the asset catalog
-/// - Returns: `true` if playback completed successfully, `false` if interrupted
-/// - Throws: AudioError when asset is missing or decoding fails
-/// - Important: Automatically respects current mute state. Won't play audio when muted.
-
-/// Toggles the global mute state for all audio playback.
-///
-/// - Returns: The new mute state (`true` = muted, `false` = unmuted)
-/// - Note: Immediately affects all player instances and future playback
-///   - Sets volume to 0 when muted
-///   - Restores volume to 1 when unmuted
-protocol AudioPlayerClient {
-    func play(_ name: String) async throws -> Bool
-    func toggleMute() -> Bool
-    func isMuted() -> Bool
-    func setIsMuted(_: Bool)
-    func stop()
+// MARK: - AudioPlayerClient (closure-based)
+struct AudioPlayerClient: @unchecked Sendable {
+    var play: @Sendable (_ name: String) async throws -> Bool
+    // FIX: Changed synchronous functions to async because their live implementation
+    // is confined to the @MainActor, requiring an asynchronous hop.
+    var toggleMute: @Sendable () async -> Bool
+    var isMuted: @Sendable () async -> Bool
+    var setIsMuted: @Sendable (_ isMuted: Bool) async -> Void
+    var stop: @Sendable () async -> Void
 }
 
-class DefaultAudioPlayerClient: AudioPlayerClient {
+// MARK: - Live Implementation
+extension AudioPlayerClient: DependencyKey {
+    static let liveValue: AudioPlayerClient = {
+        // Use the MainActor-isolated singleton for the live implementation
+        let impl = DefaultAudioPlayerClient.shared
+        return AudioPlayerClient(
+            // play is async, so the MainActor hop is handled by the async nature
+            play: { name in try await impl.play(name) },
+            // FIX: Added 'await' since the closure is now async and impl is @MainActor
+            toggleMute: { await impl.toggleMute() },
+            isMuted: { await impl.isMuted() },
+            setIsMuted: { isMuted in await impl.setIsMuted(isMuted) },
+            stop: { await impl.stop() }
+        )
+    }()
+}
+
+// MARK: - Dependency Registration
+extension DependencyValues {
+    var audioClient: AudioPlayerClient {
+        get { self[AudioPlayerClient.self] }
+        set { self[AudioPlayerClient.self] = newValue }
+    }
+}
+
+/// The live implementation is now confined to the MainActor, making all access to its
+/// methods safe in respect to the shared, mutable state it controls.
+@MainActor
+final class DefaultAudioPlayerClient {
+    // Provide a singleton instance
+    static let shared = DefaultAudioPlayerClient()
+
+    // Private initializer to enforce singleton usage
+    private init() {}
+
     func play(_ name: String) async throws -> Bool {
+        // Access is safe due to @MainActor confinement on the class/method
         if Delegate.sharedIsMuted { return false }
         let stream = AsyncThrowingStream<Bool, Error> { continuation in
             do {
@@ -58,39 +71,58 @@ class DefaultAudioPlayerClient: AudioPlayerClient {
                     }
                 )
                 delegate.player.play()
-                continuation.onTermination = { _ in
-                    delegate.player.stop()
+                
+                // FIX: Use nonisolated(unsafe) to capture the non-Sendable 'delegate'
+                // in the @Sendable onTermination closure, and wrap the cleanup in a
+                // Main Actor Task to ensure thread safety for AVAudioPlayer.
+                let delegateToStop = delegate
+                continuation.onTermination = { @Sendable [weak delegateToStop] _ in
+                    Task { @MainActor in
+                        // This line is now safe because Delegate is @unchecked Sendable
+                        // and the player access is isolated to the Main Actor.
+                        delegateToStop?.player.stop()
+                    }
                 }
             } catch {
                 continuation.finish(throwing: error)
             }
         }
-        return try await stream.first(where: { _ in true }) ?? false
+        return try await stream.first(where: { @Sendable _ in true }) ?? false
     }
+
     func toggleMute() -> Bool {
         Delegate.sharedIsMuted.toggle()
         AVAudioPlayerDelegateWrapper.shared?.player.volume = Delegate.sharedIsMuted ? 0 : 1
         return Delegate.sharedIsMuted
     }
+    
     func isMuted() -> Bool {
         return Delegate.sharedIsMuted
     }
+    
     func setIsMuted(_ isMuted: Bool) {
         AVAudioPlayerDelegateWrapper.shared?.player.volume = isMuted ? 0 : 1
         Delegate.sharedIsMuted = isMuted
     }
+    
     func stop() {
         AVAudioPlayerDelegateWrapper.shared?.player.stop()
     }
 }
 
-private final class Delegate: NSObject, AVAudioPlayerDelegate, Sendable {
-    static var sharedIsMuted = false
+// FIX: Mark Delegate as @unchecked Sendable. This is safe because all access to its
+// properties (especially the non-Sendable 'player') is guaranteed to be
+// Main Actor-isolated or wrapped in a Main Actor Task.
+private final class Delegate: NSObject, AVAudioPlayerDelegate, @unchecked Sendable {
+    /// WARNING FIXED: Confine the mutable static state to the MainActor.
+    @MainActor static var sharedIsMuted = false
 
     let didFinishPlaying: @Sendable (Bool) -> Void
     let decodeErrorDidOccur: @Sendable (Error?) -> Void
     let player: AVAudioPlayer
 
+    // FIX: Isolate the initializer to the MainActor since it accesses the @MainActor static property sharedIsMuted.
+    @MainActor
     init(
         name: String,
         didFinishPlaying: @escaping @Sendable (Bool) -> Void,
@@ -104,6 +136,7 @@ private final class Delegate: NSObject, AVAudioPlayerDelegate, Sendable {
         self.player = try AVAudioPlayer(data: soundFile.data)
         super.init()
         self.player.delegate = self
+        // This access is now safe because the init is @MainActor
         self.player.volume = Self.sharedIsMuted ? 0 : 1
         AVAudioPlayerDelegateWrapper.shared = self
     }
@@ -119,18 +152,6 @@ private final class Delegate: NSObject, AVAudioPlayerDelegate, Sendable {
 
 // Helper class to maintain reference to the current player delegate
 private class AVAudioPlayerDelegateWrapper {
-    static var shared: Delegate?
-}
-
-// MARK: - Dependency Keys
-enum AudioPlayerClientKey: DependencyKey {
-    static let liveValue: any AudioPlayerClient = DefaultAudioPlayerClient()
-}
-
-// MARK: - Dependency Registration
-extension DependencyValues {
-    var audioClient: AudioPlayerClient {
-        get { self[AudioPlayerClientKey.self] }
-        set { self[AudioPlayerClientKey.self] = newValue }
-    }
+    /// WARNING FIXED: Confine the mutable static state to the MainActor.
+    @MainActor static var shared: Delegate?
 }

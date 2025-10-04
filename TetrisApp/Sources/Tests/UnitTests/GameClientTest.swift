@@ -28,7 +28,7 @@ struct GameClientTest {
     /// - Gray color is never returned (reserved for special states)
     @Test("Random Piece Generation")
     func testRandomPiece() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         let piece = client.randomPiece()
 
         #expect(BlockColor.allCases.dropLast().contains(piece), "Random piece should be a valid BlockColor except gray")
@@ -44,7 +44,7 @@ struct GameClientTest {
     /// - Block collision scenarios
     @Test("Can Place Piece")
     func testCanPlacePiece() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
         let piece = Tetromino.create(.iBlock)
 
@@ -71,7 +71,7 @@ struct GameClientTest {
     /// - Movement collision with placed blocks
     @Test("Can Move Piece")
     func testCanMovePiece() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
         state.currentPiece = Tetromino.create(.iBlock)
         state.piecePosition = Position(row: 5, column: 5)
@@ -100,7 +100,7 @@ struct GameClientTest {
     /// - Game-over condition when immediate collision occurs
     @Test("Spawn Piece")
     func testSpawnPiece() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
         state.currentPiece = Tetromino.create(.iBlock)
         state.nextPiece = Tetromino.create(.oBlock)
@@ -130,7 +130,7 @@ struct GameClientTest {
     /// - Handling of non-clearable boards
     @Test("Clear Lines")
     func testClearLines() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
 
         // Fill a row
@@ -153,7 +153,7 @@ struct GameClientTest {
     /// - Proper state resetting in cleared areas
     @Test("Remove Lines")
     func testRemoveLines() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
         state.score = 0
         state.level = 1
@@ -180,7 +180,7 @@ struct GameClientTest {
     /// - Game speed adjustments per level
     @Test("Check Level Progression")
     func testCheckLevelProgression() async {
-        let client = DefaultGameClient()
+        let client = GameClient.liveValue
         var state = TetrisReducer.State()
         state.level = 1
         state.linesCleared = 10

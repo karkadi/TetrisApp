@@ -40,10 +40,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Sources/Tests/UnitTests/GameClientTest.swift,
+				Sources/Tests/UnitTests/GameReducerContTests.swift,
 				Sources/Tests/UnitTests/GameReducerTests.swift,
-				Sources/Tests/UnitTests/Mock/MockAudioPlayerClient.swift,
-				Sources/Tests/UnitTests/Mock/MockGameClient.swift,
-				Sources/Tests/UnitTests/Mock/MockSettingsClient.swift,
 			);
 			target = 5B16B15A2DEB6319002EAE14 /* TetrisAppTests */;
 		};
@@ -62,10 +60,8 @@
 				Sources/Tests/UITests/TetrisAppUITests.swift,
 				Sources/Tests/UITests/TetrisAppUITestsLaunchTests.swift,
 				Sources/Tests/UnitTests/GameClientTest.swift,
+				Sources/Tests/UnitTests/GameReducerContTests.swift,
 				Sources/Tests/UnitTests/GameReducerTests.swift,
-				Sources/Tests/UnitTests/Mock/MockAudioPlayerClient.swift,
-				Sources/Tests/UnitTests/Mock/MockGameClient.swift,
-				Sources/Tests/UnitTests/Mock/MockSettingsClient.swift,
 			);
 			target = 5B16B14D2DEB6318002EAE14 /* TetrisApp */;
 		};
@@ -282,6 +278,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILD_DIR)/swiftlint_output.log",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -478,7 +475,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = amongus.com.Tetris;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -511,7 +509,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = amongus.com.Tetris;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
