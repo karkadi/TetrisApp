@@ -147,6 +147,7 @@ struct TetrisView: View {
             .background(.black)
             .cornerRadius(8)
             .padding(.top, 8)
+            .accessibilityLabel("Toggle sound")
 
             Group {
                 if store.isGameOver {

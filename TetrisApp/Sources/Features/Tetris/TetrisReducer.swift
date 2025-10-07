@@ -79,7 +79,7 @@ struct TetrisReducer {
             self.piecePosition = Position(row: 0, column: 4)
             self.gameSpeed = Self.speedForLevel(1)
             self.score = 0
-            self.highScore = 0
+            self.highScore = highScore
             self.isGameOver = false
             self.isPaused = false
             self.clearingLines = []
@@ -355,7 +355,7 @@ struct TetrisReducer {
                 
             case .stopDemo:
                 return .merge(
-                    .cancel(id: TimerID.gameTimer),
+                    .cancel(id: TimerID.demoTimer),
                     .run { _ in
                         await audioClient.stop()
                     })

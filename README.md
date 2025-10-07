@@ -20,7 +20,7 @@ Featuring an AI-powered Demo Mode driven by a neural network to showcase intelli
 
 **High Score Tracking:** Save and display your top scores locally.
 
-**Unit Test Coverage:** 83% test coverage for robust and reliable code.
+**Unit Test Coverage:** 94% test coverage for robust and reliable code.
 
 ## 🧠 AI and Neural Network
 

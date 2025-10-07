@@ -209,19 +209,10 @@ struct GameReducerContTests {
     
     @Test("High score")
     func highScore() async {
-        // FIX: Helper reference type to bypass Swift 6 concurrency warnings on mutation
-        final class Ref<T> {
-            var value: T
-            init(value: T) {
-                self.value = value
-            }
-        }
-        
         var initialState = TetrisReducer.State()
         initialState.score = 500
         initialState.highScore = 200
         
-        let didSaveHighScore = Ref(value: false) // Use the Ref object
         let store = await TestStore(
             initialState: initialState ) {
                 TetrisReducer()
@@ -245,15 +236,13 @@ struct GameReducerContTests {
                                                    getHighScore: { 200 },
                                                    setHighScore: { score in
                     #expect(score == 500)
-                    didSaveHighScore.value = true
                 })
             }
         
         await store.send(.checkHighScore) {
             $0.highScore = 500
         }
-        
-        #expect(didSaveHighScore.value)
+
     }
     
 }

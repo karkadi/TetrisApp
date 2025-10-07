@@ -38,7 +38,9 @@ extension NeuralNetworkTrainer: DependencyKey {
             
             let gameClient = GameClient.liveValue
             var state = TetrisReducer.State()
+            state.currentPiece = Tetromino.create(gameClient.randomPiece())
             state.nextPiece = Tetromino.create(gameClient.randomPiece())
+            state.piecePosition.row += 1
             if !gameClient.spawnPiece(&state) {
                 return 0
             }
